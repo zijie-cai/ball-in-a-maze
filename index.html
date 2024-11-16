@@ -439,14 +439,11 @@
 
         // Initialize the game
         resetGame(true);
-        startGameAutomatically(); // Start the game automatically
 
         // Utility Functions
-
-        // Clamping function to limit values between -limit and +limit
-        function clamp(value, limit) {
+        Math.minmax = (value, limit) => {
             return Math.max(Math.min(value, limit), -limit);
-        }
+        };
 
         const distance2D = (p1, p2) => {
             return Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
@@ -539,13 +536,11 @@
         // Add event listener for reset button
         resetButton.addEventListener("click", function () {
             resetGame();
-            startGameAutomatically(); // Restart the game after reset
         });
 
         // Add event listener for new maze button
         newMazeButton.addEventListener("click", function () {
             resetGame(true);
-            startGameAutomatically(); // Start the game after generating a new maze
         });
 
         // Add event listener for instruction button
@@ -637,9 +632,8 @@
                     clientY = event.touches[0].clientY;
                 }
 
-                // **Replace Math.minmax with clamp**
-                const mouseDeltaX = -clamp(mouseStartX - clientX, 40);
-                const mouseDeltaY = -clamp(mouseStartY - clientY, 40);
+                const mouseDeltaX = -Math.minmax(mouseStartX - clientX, 40);
+                const mouseDeltaY = -Math.minmax(mouseStartY - clientY, 40);
 
                 joystickHeadElement.style.cssText = `
                     left: ${mouseDeltaX}px;
@@ -722,7 +716,7 @@
             // Fixed starting position
             const ballStart = { column: mazeColumns-1, row: mazeRows-1};
 
-            // Fixed exit side and exit cell (Left side, middle row)
+            // Fixed exit side and exit cell (Bottom-Left Corner)
             exitSide = 'left';
             exitCell = { column: 0, row: Math.floor(mazeRows / 2) };
 
@@ -1008,8 +1002,8 @@
                 // Considering a maximum tilt of 30 degrees for normalization
                 const maxTilt = 30;
 
-                beta = clamp(beta, maxTilt);
-                gamma = clamp(gamma, maxTilt);
+                beta = Math.max(Math.min(beta, maxTilt), -maxTilt);
+                gamma = Math.max(Math.min(gamma, maxTilt), -maxTilt);
 
                 // Map the tilt to rotation degrees (max 12 degrees)
                 const rotationX = (beta / maxTilt) * 12;
@@ -1063,8 +1057,7 @@
                     } else {
                         ball.velocityX += velocityChangeX;
                         ball.velocityX -= Math.sign(accelerationX) * frictionDeltaX;
-                        // **Replace Math.minmax with clamp**
-                        ball.velocityX = clamp(ball.velocityX, maxVelocity);
+                        ball.velocityX = Math.minmax(ball.velocityX, maxVelocity);
                     }
 
                     if (accelerationY === 0) {
@@ -1073,8 +1066,7 @@
                     } else {
                         ball.velocityY += velocityChangeY;
                         ball.velocityY -= Math.sign(accelerationY) * frictionDeltaY;
-                        // **Replace Math.minmax with clamp**
-                        ball.velocityY = clamp(ball.velocityY, maxVelocity);
+                        ball.velocityY = Math.minmax(ball.velocityY, maxVelocity);
                     }
 
                     // Preliminary next ball position, only becomes true if no hit occurs
@@ -1317,20 +1309,6 @@
             }
         }
 
-        // Start the game automatically
-        function startGameAutomatically() {
-            if (!gameInProgress) {
-                gameInProgress = true;
-                window.requestAnimationFrame(main);
-                noteElement.style.opacity = 0;
-
-                // Request device orientation permission
-                if (!deviceOrientationEnabled) {
-                    requestDeviceOrientation();
-                }
-            }
-        }
-
         // Request Device Orientation Permissions Automatically on Game Start
         function requestDeviceOrientation() {
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -1342,8 +1320,6 @@
                             deviceOrientationEnabled = true;
                         } else {
                             console.warn('Device orientation permission denied.');
-                            // Inform the user to use the joystick
-                            showToast('Device orientation permission denied. Use the joystick to control the ball.');
                         }
                     })
                     .catch(console.error);
@@ -1353,8 +1329,6 @@
                 deviceOrientationEnabled = true;
             } else {
                 console.warn('Device orientation not supported.');
-                // Inform the user to use the joystick
-                showToast('Device orientation not supported. Use the joystick to control the ball.');
             }
         }
 
@@ -1393,14 +1367,6 @@
             confettiCanvas.width = window.innerWidth;
             confettiCanvas.height = window.innerHeight;
         });
-
-        // **Remove the Math.minmax Function**
-        // **Delete the following block entirely**
-        /*
-        Math.minmax = (value, limit) => {
-            return Math.max(Math.min(value, limit), -limit);
-        };
-        */
     </script>
 </body>
 </html>
