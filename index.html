@@ -637,6 +637,7 @@
                     clientY = event.touches[0].clientY;
                 }
 
+                // **Replace Math.minmax with clamp**
                 const mouseDeltaX = -clamp(mouseStartX - clientX, 40);
                 const mouseDeltaY = -clamp(mouseStartY - clientY, 40);
 
@@ -1062,6 +1063,7 @@
                     } else {
                         ball.velocityX += velocityChangeX;
                         ball.velocityX -= Math.sign(accelerationX) * frictionDeltaX;
+                        // **Replace Math.minmax with clamp**
                         ball.velocityX = clamp(ball.velocityX, maxVelocity);
                     }
 
@@ -1071,6 +1073,7 @@
                     } else {
                         ball.velocityY += velocityChangeY;
                         ball.velocityY -= Math.sign(accelerationY) * frictionDeltaY;
+                        // **Replace Math.minmax with clamp**
                         ball.velocityY = clamp(ball.velocityY, maxVelocity);
                     }
 
@@ -1390,6 +1393,14 @@
             confettiCanvas.width = window.innerWidth;
             confettiCanvas.height = window.innerHeight;
         });
+
+        // **Remove the Math.minmax Function**
+        // **Delete the following block entirely**
+        /*
+        Math.minmax = (value, limit) => {
+            return Math.max(Math.min(value, limit), -limit);
+        };
+        */
     </script>
 </body>
 </html>
