@@ -16,12 +16,13 @@
 
             font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--background-color);
-            height: 85vh;
+            height: 100vh;
             margin: 0;
             display: flex;
             align-items: center;
             justify-content: center;
             user-select: none; /* Prevent text selection */
+            flex-direction: column;
         }
 
         #game {
@@ -46,6 +47,9 @@
             justify-content: center;
             align-items: center;
             margin-bottom: 20px; /* Added margin for spacing */
+            background-color: #f0f0f0;
+            border: 2px solid #ccc;
+            border-radius: 10px;
         }
 
         /* Removed #end styles */
@@ -68,8 +72,8 @@
             position: relative;
             background-color: var(--joystick-color);
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
+            width: 80px;
+            height: 80px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -81,8 +85,8 @@
             position: relative;
             background-color: var(--joystick-head-color);
             border-radius: 50%;
-            width: 20px;
-            height: 20px;
+            width: 30px;
+            height: 30px;
             cursor: grab;
             user-select: none; /* Prevent text selection */
 
@@ -101,55 +105,55 @@
 
         .joystick-arrow:nth-of-type(1) {
             position: absolute;
-            bottom: 55px;
+            bottom: 90px;
 
             width: 0;
             height: 0;
-            border-left: 10px solid transparent;
-            border-right: 10px solid transparent;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
 
-            border-bottom: 10px solid var(--joystick-color);
+            border-bottom: 15px solid var(--joystick-color);
         }
 
         .joystick-arrow:nth-of-type(2) {
             position: absolute;
-            top: 55px;
+            top: 90px;
 
             width: 0;
             height: 0;
-            border-left: 10px solid transparent;
-            border-right: 10px solid transparent;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
 
-            border-top: 10px solid var(--joystick-color);
+            border-top: 15px solid var(--joystick-color);
         }
 
         .joystick-arrow:nth-of-type(3) {
             position: absolute;
-            left: 55px;
+            left: 90px;
 
             width: 0;
             height: 0;
-            border-top: 10px solid transparent;
-            border-bottom: 10px solid transparent;
+            border-top: 15px solid transparent;
+            border-bottom: 15px solid transparent;
 
-            border-left: 10px solid var(--joystick-color);
+            border-left: 15px solid var(--joystick-color);
         }
 
         .joystick-arrow:nth-of-type(4) {
             position: absolute;
-            right: 55px;
+            right: 90px;
 
             width: 0;
             height: 0;
-            border-top: 10px solid transparent;
-            border-bottom: 10px solid transparent;
+            border-top: 15px solid transparent;
+            border-bottom: 15px solid transparent;
 
-            border-right: 10px solid var(--joystick-color);
+            border-right: 15px solid var(--joystick-color);
         }
 
         #note {
             text-align: center;
-            font-size: 0.9em;
+            font-size: 1em;
             color: var(--text-color);
             transition: opacity 2s;
             max-width: 300px;
@@ -213,13 +217,30 @@
         .wall::after {
             bottom: -5px;
         }
+
+        /* Button for enabling tilt control */
+        #enable-tilt-button {
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none; /* Hidden by default */
+        }
+
+        #enable-tilt-button.show {
+            display: block;
+        }
+
     </style>
 </head>
 <body>
     <div id="game">
         <div id="title">Ball in a Maze</div>
         <div id="maze">
-            <!-- Removed end element -->
+            <!-- Maze elements will be dynamically generated -->
         </div>
         <div id="controls">
             <div id="joystick">
@@ -230,13 +251,15 @@
                 <div id="joystick-head"></div>
             </div>
             <div id="note">
-                Click and hold the joystick to start!
-                <p>Move the ball out of the maze.</p>
+                Drag the joystick or tilt your device to tilt the maze!
+                <p>Help the ball escape!</p>
             </div>
             <div id="buttons">
                 <button id="reset-button">Reset Game</button>
                 <button id="new-maze-button">New Maze</button>
             </div>
+            <!-- Button to enable device orientation -->
+            <button id="enable-tilt-button">Enable Tilt Control</button>
         </div>
     </div>
     <script>
@@ -253,6 +276,7 @@
         const noteElement = document.getElementById("note"); // Note element for instructions and game won, game failed texts
         const resetButton = document.getElementById("reset-button");
         const newMazeButton = document.getElementById("new-maze-button");
+        const enableTiltButton = document.getElementById("enable-tilt-button");
 
         // Variables
         let previousTimestamp;
@@ -287,6 +311,7 @@
         // Variables for Tilt Control
         let tiltRotationX = 0;
         let tiltRotationY = 0;
+        let deviceOrientationSupported = false;
 
         // Initialize the game
         resetGame(true);
@@ -352,10 +377,10 @@
                 y: Math.sin(impactAngle + Math.PI - rotationAngle) * closestDistance
             };
 
-            const x = ball.x;
-            const y = ball.y;
-            const velocityX = ball.x - (cap.x + deltaFromCap.x);
-            const velocityY = ball.y - (cap.y + deltaFromCap.y);
+            const x = cap.x + deltaFromCap.x;
+            const y = cap.y + deltaFromCap.y;
+            const velocityX = ball.velocityX;
+            const velocityY = ball.velocityY;
             const nextX = x + velocityX;
             const nextY = y + velocityY;
 
@@ -369,7 +394,6 @@
             return number + difference;
         };
 
-        // 2. Add Touch Event Handlers alongside Mouse Event Handlers
         // Joystick Event Listeners
         joystickHeadElement.addEventListener("mousedown", startInteraction);
         joystickHeadElement.addEventListener("touchstart", startInteraction, { passive: false });
@@ -395,6 +419,31 @@
             resetGame(true);
         });
 
+        // Add event listener for enable tilt button
+        enableTiltButton.addEventListener("click", function () {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                // iOS 13+ devices require permission
+                DeviceOrientationEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation, true);
+                            enableTiltButton.style.display = 'none';
+                            noteElement.innerHTML = `Drag the joystick or tilt your device to tilt the maze!
+                                <p>Help the ball escape!</p>`;
+                        } else {
+                            alert('Device orientation permission denied. Tilt controls will not be available.');
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                // Non iOS 13+ devices
+                window.addEventListener('deviceorientation', handleOrientation, true);
+                enableTiltButton.style.display = 'none';
+                noteElement.innerHTML = `Drag the joystick or tilt your device to tilt the maze!
+                    <p>Help the ball escape!</p>`;
+            }
+        });
+
         function startInteraction(event) {
             event.preventDefault(); // Prevent default browser behavior
             isMouseDown = true;
@@ -411,7 +460,9 @@
             joystickHeadElement.style.cssText = `
                 animation: none;
                 cursor: grabbing;
-                ${event.type === "touchstart" ? 'cursor: grabbing;' : ''}
+                position: relative;
+                left: 0px;
+                top: 0px;
             `;
             if (!gameInProgress) {
                 gameInProgress = true;
@@ -426,10 +477,16 @@
                 joystickHeadElement.style.cssText = `
                     left: 0;
                     top: 0;
-                    animation: glow;
+                    animation: glow 0.6s infinite alternate ease-in-out;
                     cursor: grab;
+                    position: relative;
                 `;
-                // Maze rotation will now respond to tilt
+                // Reset rotation to tiltRotation if available
+                currentRotationX = tiltRotationX;
+                currentRotationY = tiltRotationY;
+                mazeElement.style.transform = `
+                    rotateY(${currentRotationY}deg) rotateX(${-currentRotationX}deg)
+                `;
             }
         }
 
@@ -447,8 +504,8 @@
                     clientY = event.touches[0].clientY;
                 }
 
-                const mouseDeltaX = -Math.minmax(mouseStartX - clientX, 15);
-                const mouseDeltaY = -Math.minmax(mouseStartY - clientY, 15);
+                const mouseDeltaX = -Math.minmax(mouseStartX - clientX, 40);
+                const mouseDeltaY = -Math.minmax(mouseStartY - clientY, 40);
 
                 joystickHeadElement.style.cssText = `
                     left: ${mouseDeltaX}px;
@@ -457,14 +514,14 @@
                     cursor: grabbing;
                 `;
 
-                const rotationY = mouseDeltaX * 0.8; // Max rotation = 12
-                const rotationX = mouseDeltaY * 0.8;
+                const rotationY = mouseDeltaX * 0.3; // Max rotation ~12
+                const rotationX = mouseDeltaY * 0.3;
 
                 currentRotationX = rotationX;
                 currentRotationY = rotationY;
 
-                mazeElement.style.cssText = `
-                    transform: rotateY(${currentRotationY}deg) rotateX(${-currentRotationX}deg)
+                mazeElement.style.transform = `
+                    rotateY(${currentRotationY}deg) rotateX(${-currentRotationX}deg)
                 `;
             }
         }
@@ -484,20 +541,32 @@
             tiltRotationX = 0;
             tiltRotationY = 0;
 
-            mazeElement.style.cssText = `
-                transform: rotateY(0deg) rotateX(0deg)
+            mazeElement.style.transform = `
+                rotateY(0deg) rotateX(0deg)
             `;
 
             joystickHeadElement.style.cssText = `
                 left: 0;
                 top: 0;
-                animation: glow;
+                animation: glow 0.6s infinite alternate ease-in-out;
                 cursor: grab;
+                position: relative;
             `;
 
-            noteElement.innerHTML = `Drag the joystick or tilt your device to tilt the maze!
+            noteElement.innerHTML = `Drag the joystick or enable tilt control to tilt the maze!
                 <p>Help the ball escape!</p>`;
             noteElement.style.opacity = 1;
+
+            // Show the enable tilt button if device orientation is supported
+            if (window.DeviceOrientationEvent) {
+                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    // iOS 13+ devices require permission
+                    enableTiltButton.classList.add('show');
+                } else {
+                    // Non iOS 13+ devices
+                    enableTiltButton.classList.add('show');
+                }
+            }
 
             // Clear previous ball elements
             if (ballElements.length) {
@@ -518,9 +587,9 @@
             // Fixed starting position
             const ballStart = { column: mazeColumns-1, row: mazeRows-1};
 
-            // Fixed exit side and exit cell (Bottom-Right Corner)
+            // Fixed exit side and exit cell (Bottom-Left Corner)
             exitSide = 'left';
-            exitCell = { column: 0, row: 0};
+            exitCell = { column: 0, row: Math.floor(mazeRows / 2) };
 
             const ballStartX = ballStart.column * (wallW + pathW) + (wallW / 2 + pathW / 2);
             const ballStartY = ballStart.row * (wallW + pathW) + (wallW / 2 + pathW / 2);
@@ -721,7 +790,6 @@
             });
         }
 
-
         function getUnvisitedNeighbors(cell) {
             const neighbors = [];
 
@@ -787,8 +855,6 @@
         }
 
         // Handle Device Orientation for Tilt Control
-        window.addEventListener('deviceorientation', handleOrientation, true);
-
         function handleOrientation(event) {
             if (!isMouseDown) {
                 // event.beta: front-back tilt [-180, 180]
@@ -814,8 +880,8 @@
                 currentRotationX = tiltRotationX;
                 currentRotationY = tiltRotationY;
 
-                mazeElement.style.cssText = `
-                    transform: rotateY(${currentRotationY}deg) rotateX(${-currentRotationX}deg)
+                mazeElement.style.transform = `
+                    rotateY(${currentRotationY}deg) rotateX(${-currentRotationX}deg)
                 `;
             }
         }
@@ -1030,10 +1096,8 @@
 
                                         // Ball hits the bottom cap of a vertical wall
                                         const closest = closestItCanBe(wallEnd, {
-                                            x: closest.x,
-                                            y: closest.y,
-                                            velocityX: ball.velocityX,
-                                            velocityY: ball.velocityY
+                                            x: ball.nextX,
+                                            y: ball.nextY
                                         });
                                         const rolled = rollAroundCap(wallEnd, {
                                             x: closest.x,
