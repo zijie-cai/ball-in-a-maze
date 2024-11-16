@@ -28,7 +28,6 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-   
             gap: 30px; /* Increased gap for more vertical space */
             perspective: 600px;
         }
@@ -75,7 +74,7 @@
             align-items: center;
             justify-content: center;
             margin-bottom: 10px;
-            touch-action: none; /* 3. Prevent default touch actions */
+            touch-action: none; /* Prevent default touch actions */
         }
 
         #joystick-head {
@@ -285,6 +284,10 @@
         // Maze grid
         let grid = [];
 
+        // Variables for Tilt Control
+        let tiltRotationX = 0;
+        let tiltRotationY = 0;
+
         // Initialize the game
         resetGame(true);
 
@@ -423,10 +426,10 @@
                 joystickHeadElement.style.cssText = `
                     left: 0;
                     top: 0;
-                    animation: none;
+                    animation: glow;
                     cursor: grab;
                 `;
-                // Maze remains tilted, acceleration continues based on currentRotationX and currentRotationY
+                // Maze rotation will now respond to tilt
             }
         }
 
@@ -478,6 +481,8 @@
             frictionY = 0;
             currentRotationX = 0;
             currentRotationY = 0;
+            tiltRotationX = 0;
+            tiltRotationY = 0;
 
             mazeElement.style.cssText = `
                 transform: rotateY(0deg) rotateX(0deg)
@@ -490,7 +495,7 @@
                 cursor: grab;
             `;
 
-            noteElement.innerHTML = `Drag the joystick to tilt the maze!
+            noteElement.innerHTML = `Drag the joystick or tilt your device to tilt the maze!
                 <p>Help the ball escape!</p>`;
             noteElement.style.opacity = 1;
 
@@ -781,6 +786,40 @@
             }
         }
 
+        // Handle Device Orientation for Tilt Control
+        window.addEventListener('deviceorientation', handleOrientation, true);
+
+        function handleOrientation(event) {
+            if (!isMouseDown) {
+                // event.beta: front-back tilt [-180, 180]
+                // event.gamma: left-right tilt [-90, 90]
+
+                let beta = event.beta;   // X axis
+                let gamma = event.gamma; // Y axis
+
+                // Normalize the beta and gamma to [-1, 1]
+                // Considering a maximum tilt of 30 degrees for normalization
+                const maxTilt = 30;
+
+                beta = Math.max(Math.min(beta, maxTilt), -maxTilt);
+                gamma = Math.max(Math.min(gamma, maxTilt), -maxTilt);
+
+                // Map the tilt to rotation degrees (max 12 degrees)
+                const rotationX = (beta / maxTilt) * 12;
+                const rotationY = (gamma / maxTilt) * 12;
+
+                tiltRotationX = rotationX;
+                tiltRotationY = rotationY;
+
+                currentRotationX = tiltRotationX;
+                currentRotationY = tiltRotationY;
+
+                mazeElement.style.cssText = `
+                    transform: rotateY(${currentRotationY}deg) rotateX(${-currentRotationX}deg)
+                `;
+            }
+        }
+
         // Main game loop
         function main(timestamp) {
             // It is possible to reset the game mid-game. This case the loop should stop
@@ -991,8 +1030,10 @@
 
                                         // Ball hits the bottom cap of a vertical wall
                                         const closest = closestItCanBe(wallEnd, {
-                                            x: ball.nextX,
-                                            y: ball.nextY
+                                            x: closest.x,
+                                            y: closest.y,
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
                                         });
                                         const rolled = rollAroundCap(wallEnd, {
                                             x: closest.x,
