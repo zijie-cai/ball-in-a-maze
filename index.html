@@ -3,15 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <title>Maze Game</title>
+    <!-- 1. Add Meta Viewport for Mobile Responsiveness -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
-            /* Color Palette: https://coolors.co/f06449-ede6e3-7d82b8-36382e-613f75 */
-            --background-color: #ede6e3; /* Light beige for the background */
-            --wall-color: #210124; /* Dark, neutral tone for walls */
-            --joystick-color: #7d82b8; /* Matching joystick color with accent tones */
-            --joystick-head-color: #7d82b8; /* Deeper purple for distinct joystick head */
-            --ball-color: #7d82b8; /* Bright red-orange for high contrast with background */
-            --text-color: #210124; /* Deep maroon for readable text */
+            --background-color: #ede6e3; 
+            --wall-color: #210124;
+            --joystick-color: #7d82b8; 
+            --joystick-head-color: #7d82b8;
+            --ball-color: #7d82b8; 
+            --text-color: #210124; 
 
             font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--background-color);
@@ -74,6 +75,7 @@
             align-items: center;
             justify-content: center;
             margin-bottom: 10px;
+            touch-action: none; /* 3. Prevent default touch actions */
         }
 
         #joystick-head {
@@ -364,24 +366,58 @@
             return number + difference;
         };
 
+        // 2. Add Touch Event Handlers alongside Mouse Event Handlers
         // Joystick Event Listeners
-        joystickHeadElement.addEventListener("mousedown", function (event) {
+        joystickHeadElement.addEventListener("mousedown", startInteraction);
+        joystickHeadElement.addEventListener("touchstart", startInteraction, { passive: false });
+
+        window.addEventListener("mouseup", endInteraction);
+        window.addEventListener("touchend", endInteraction);
+
+        window.addEventListener("mousemove", moveInteraction);
+        window.addEventListener("touchmove", moveInteraction, { passive: false });
+
+        // Prevent joystick from being dragged without holding down the mouse button or touch
+        joystickHeadElement.addEventListener("click", function (event) {
+            event.preventDefault();
+        });
+
+        // Add event listener for reset button
+        resetButton.addEventListener("click", function () {
+            resetGame();
+        });
+
+        // Add event listener for new maze button
+        newMazeButton.addEventListener("click", function () {
+            resetGame(true);
+        });
+
+        function startInteraction(event) {
             event.preventDefault(); // Prevent default browser behavior
             isMouseDown = true;
-            mouseStartX = event.clientX;
-            mouseStartY = event.clientY;
+
+            if (event.type === "mousedown") {
+                mouseStartX = event.clientX;
+                mouseStartY = event.clientY;
+            } else if (event.type === "touchstart") {
+                const touch = event.touches[0];
+                mouseStartX = touch.clientX;
+                mouseStartY = touch.clientY;
+            }
+
             joystickHeadElement.style.cssText = `
                 animation: none;
                 cursor: grabbing;
+                ${event.type === "touchstart" ? 'cursor: grabbing;' : ''}
             `;
             if (!gameInProgress) {
                 gameInProgress = true;
                 window.requestAnimationFrame(main);
                 noteElement.style.opacity = 0;
             }
-        });
+        }
 
-        window.addEventListener("mouseup", function (event) {
+        function endInteraction(event) {
             if (isMouseDown) {
                 isMouseDown = false;
                 joystickHeadElement.style.cssText = `
@@ -392,12 +428,24 @@
                 `;
                 // Maze remains tilted, acceleration continues based on currentRotationX and currentRotationY
             }
-        });
+        }
 
-        window.addEventListener("mousemove", function (event) {
+        function moveInteraction(event) {
             if (isMouseDown) {
-                const mouseDeltaX = -Math.minmax(mouseStartX - event.clientX, 15);
-                const mouseDeltaY = -Math.minmax(mouseStartY - event.clientY, 15);
+                event.preventDefault(); // Prevent scrolling on touch devices
+
+                let clientX, clientY;
+
+                if (event.type === "mousemove") {
+                    clientX = event.clientX;
+                    clientY = event.clientY;
+                } else if (event.type === "touchmove") {
+                    clientX = event.touches[0].clientX;
+                    clientY = event.touches[0].clientY;
+                }
+
+                const mouseDeltaX = -Math.minmax(mouseStartX - clientX, 15);
+                const mouseDeltaY = -Math.minmax(mouseStartY - clientY, 15);
 
                 joystickHeadElement.style.cssText = `
                     left: ${mouseDeltaX}px;
@@ -416,22 +464,7 @@
                     transform: rotateY(${currentRotationY}deg) rotateX(${-currentRotationX}deg)
                 `;
             }
-        });
-
-        // Prevent joystick from being dragged without holding down the mouse button
-        joystickHeadElement.addEventListener("click", function (event) {
-            event.preventDefault();
-        });
-
-        // Add event listener for reset button
-        resetButton.addEventListener("click", function () {
-            resetGame();
-        });
-
-        // Add event listener for new maze button
-        newMazeButton.addEventListener("click", function () {
-            resetGame(true);
-        });
+        }
 
         function resetGame(generateNewMaze = false) {
             previousTimestamp = undefined;
@@ -783,7 +816,7 @@
                         ball.velocityX = slow(ball.velocityX, frictionDeltaX);
                     } else {
                         ball.velocityX += velocityChangeX;
-                        ball.velocityX -= Math.sign(velocityChangeX) * frictionDeltaX;
+                        ball.velocityX -= Math.sign(accelerationX) * frictionDeltaX;
                         ball.velocityX = Math.minmax(ball.velocityX, maxVelocity);
                     }
 
