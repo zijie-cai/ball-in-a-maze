@@ -439,16 +439,14 @@
 
         // Initialize the game
         resetGame(true);
-
-        // Automatically start the game
-        deviceOrientationSupported = requestDeviceOrientation();
-        gameInProgress = true;
-        window.requestAnimationFrame(main);
+        startGameAutomatically(); // Start the game automatically
 
         // Utility Functions
-        Math.minmax = (value, limit) => {
+
+        // Clamping function to limit values between -limit and +limit
+        function clamp(value, limit) {
             return Math.max(Math.min(value, limit), -limit);
-        };
+        }
 
         const distance2D = (p1, p2) => {
             return Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
@@ -541,19 +539,13 @@
         // Add event listener for reset button
         resetButton.addEventListener("click", function () {
             resetGame();
-            // Automatically restart the game after reset
-            deviceOrientationSupported = requestDeviceOrientation();
-            gameInProgress = true;
-            window.requestAnimationFrame(main);
+            startGameAutomatically(); // Restart the game after reset
         });
 
         // Add event listener for new maze button
         newMazeButton.addEventListener("click", function () {
             resetGame(true);
-            // Automatically restart the game after generating a new maze
-            deviceOrientationSupported = requestDeviceOrientation();
-            gameInProgress = true;
-            window.requestAnimationFrame(main);
+            startGameAutomatically(); // Start the game after generating a new maze
         });
 
         // Add event listener for instruction button
@@ -600,6 +592,16 @@
                 left: 0px;
                 top: 0px;
             `;
+            if (!gameInProgress) {
+                gameInProgress = true;
+                window.requestAnimationFrame(main);
+                noteElement.style.opacity = 0;
+
+                // Request device orientation permission if not already enabled
+                if (!deviceOrientationEnabled) {
+                    requestDeviceOrientation();
+                }
+            }
         }
 
         function endInteraction(event) {
@@ -635,8 +637,8 @@
                     clientY = event.touches[0].clientY;
                 }
 
-                const mouseDeltaX = -Math.minmax(mouseStartX - clientX, 40);
-                const mouseDeltaY = -Math.minmax(mouseStartY - clientY, 40);
+                const mouseDeltaX = -clamp(mouseStartX - clientX, 40);
+                const mouseDeltaY = -clamp(mouseStartY - clientY, 40);
 
                 joystickHeadElement.style.cssText = `
                     left: ${mouseDeltaX}px;
@@ -690,6 +692,9 @@
                 position: relative;
             `;
 
+            // Remove the automatic display of the instruction modal
+            // instructionModal.style.display = "block";
+
             // Hide any existing toast
             toast.className = "";
 
@@ -716,7 +721,7 @@
             // Fixed starting position
             const ballStart = { column: mazeColumns-1, row: mazeRows-1};
 
-            // Fixed exit side and exit cell (Bottom-Left Corner)
+            // Fixed exit side and exit cell (Left side, middle row)
             exitSide = 'left';
             exitCell = { column: 0, row: Math.floor(mazeRows / 2) };
 
@@ -1002,8 +1007,8 @@
                 // Considering a maximum tilt of 30 degrees for normalization
                 const maxTilt = 30;
 
-                beta = Math.max(Math.min(beta, maxTilt), -maxTilt);
-                gamma = Math.max(Math.min(gamma, maxTilt), -maxTilt);
+                beta = clamp(beta, maxTilt);
+                gamma = clamp(gamma, maxTilt);
 
                 // Map the tilt to rotation degrees (max 12 degrees)
                 const rotationX = (beta / maxTilt) * 12;
@@ -1057,7 +1062,7 @@
                     } else {
                         ball.velocityX += velocityChangeX;
                         ball.velocityX -= Math.sign(accelerationX) * frictionDeltaX;
-                        ball.velocityX = Math.minmax(ball.velocityX, maxVelocity);
+                        ball.velocityX = clamp(ball.velocityX, maxVelocity);
                     }
 
                     if (accelerationY === 0) {
@@ -1066,7 +1071,7 @@
                     } else {
                         ball.velocityY += velocityChangeY;
                         ball.velocityY -= Math.sign(accelerationY) * frictionDeltaY;
-                        ball.velocityY = Math.minmax(ball.velocityY, maxVelocity);
+                        ball.velocityY = clamp(ball.velocityY, maxVelocity);
                     }
 
                     // Preliminary next ball position, only becomes true if no hit occurs
@@ -1231,10 +1236,8 @@
 
                                         // Ball hits the bottom cap of a vertical wall
                                         const closest = closestItCanBe(wallEnd, {
-                                            x: closest.x,
-                                            y: closest.y,
-                                            velocityX: ball.velocityX,
-                                            velocityY: ball.velocityY
+                                            x: ball.nextX,
+                                            y: ball.nextY
                                         });
                                         const rolled = rollAroundCap(wallEnd, {
                                             x: closest.x,
@@ -1294,14 +1297,6 @@
                         showToast(`🎉 Congrats, the ball is free! 🎉`);
                         gameInProgress = false;
                         triggerConfetti();
-
-                        // Automatically reset the game after a short delay
-                        setTimeout(() => {
-                            resetGame(true);
-                            deviceOrientationSupported = requestDeviceOrientation();
-                            gameInProgress = true;
-                            window.requestAnimationFrame(main);
-                        }, 3000); // 3 seconds delay
                     }
                 });
 
@@ -1319,6 +1314,20 @@
             }
         }
 
+        // Start the game automatically
+        function startGameAutomatically() {
+            if (!gameInProgress) {
+                gameInProgress = true;
+                window.requestAnimationFrame(main);
+                noteElement.style.opacity = 0;
+
+                // Request device orientation permission
+                if (!deviceOrientationEnabled) {
+                    requestDeviceOrientation();
+                }
+            }
+        }
+
         // Request Device Orientation Permissions Automatically on Game Start
         function requestDeviceOrientation() {
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -1330,6 +1339,8 @@
                             deviceOrientationEnabled = true;
                         } else {
                             console.warn('Device orientation permission denied.');
+                            // Inform the user to use the joystick
+                            showToast('Device orientation permission denied. Use the joystick to control the ball.');
                         }
                     })
                     .catch(console.error);
@@ -1339,8 +1350,9 @@
                 deviceOrientationEnabled = true;
             } else {
                 console.warn('Device orientation not supported.');
+                // Inform the user to use the joystick
+                showToast('Device orientation not supported. Use the joystick to control the ball.');
             }
-            return deviceOrientationEnabled;
         }
 
         // Highlight the exit border to green
