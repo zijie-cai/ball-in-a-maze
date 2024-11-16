@@ -8,6 +8,7 @@
     <!-- 2. Include Canvas Confetti Library -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <style>
+        /* Existing CSS styles remain unchanged */
         body {
             --background-color: #ede6e3; 
             --wall-color: #210124;
@@ -439,6 +440,7 @@
 
         // Initialize the game
         resetGame(true);
+        startGameAutomatically(); // Start the game automatically on page load
 
         // Utility Functions
         Math.minmax = (value, limit) => {
@@ -536,11 +538,13 @@
         // Add event listener for reset button
         resetButton.addEventListener("click", function () {
             resetGame();
+            startGameAutomatically(); // Restart the game after reset
         });
 
         // Add event listener for new maze button
         newMazeButton.addEventListener("click", function () {
             resetGame(true);
+            startGameAutomatically(); // Start the game after generating a new maze
         });
 
         // Add event listener for instruction button
@@ -1309,6 +1313,20 @@
             }
         }
 
+        // Start the game automatically
+        function startGameAutomatically() {
+            if (!gameInProgress) {
+                gameInProgress = true;
+                window.requestAnimationFrame(main);
+                noteElement.style.opacity = 0;
+
+                // Request device orientation permission
+                if (!deviceOrientationEnabled) {
+                    requestDeviceOrientation();
+                }
+            }
+        }
+
         // Request Device Orientation Permissions Automatically on Game Start
         function requestDeviceOrientation() {
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -1320,6 +1338,8 @@
                             deviceOrientationEnabled = true;
                         } else {
                             console.warn('Device orientation permission denied.');
+                            // Optionally, inform the user or provide alternative controls
+                            showToast('Device orientation permission denied. Use the joystick to control the ball.');
                         }
                     })
                     .catch(console.error);
@@ -1329,6 +1349,8 @@
                 deviceOrientationEnabled = true;
             } else {
                 console.warn('Device orientation not supported.');
+                // Optionally, inform the user or provide alternative controls
+                showToast('Device orientation not supported. Use the joystick to control the ball.');
             }
         }
 
