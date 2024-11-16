@@ -72,8 +72,8 @@
             position: relative;
             background-color: var(--joystick-color);
             border-radius: 50%;
-            width:60px;
-            height: 60px;
+            width: 50px; /* Reduced from 60px to 50px */
+            height: 50px; /* Reduced from 60px to 50px */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -85,8 +85,8 @@
             position: relative;
             background-color: var(--joystick-head-color);
             border-radius: 50%;
-            width: 20px;
-            height: 20px;
+            width: 15px; /* Reduced from 20px to 15px */
+            height: 15px; /* Reduced from 20px to 15px */
             cursor: grab;
             user-select: none; /* Prevent text selection */
 
@@ -105,50 +105,50 @@
 
         .joystick-arrow:nth-of-type(1) {
             position: absolute;
-            bottom: 70px;
+            bottom: 60px;
 
             width: 0;
             height: 0;
-            border-left: 15px solid transparent;
-            border-right: 15px solid transparent;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
 
-            border-bottom: 15px solid var(--joystick-color);
+            border-bottom: 10px solid var(--joystick-color);
         }
 
         .joystick-arrow:nth-of-type(2) {
             position: absolute;
-            top: 70px;
+            top: 60px;
 
             width: 0;
             height: 0;
-            border-left: 15px solid transparent;
-            border-right: 15px solid transparent;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
 
-            border-top: 15px solid var(--joystick-color);
+            border-top: 10px solid var(--joystick-color);
         }
 
         .joystick-arrow:nth-of-type(3) {
             position: absolute;
-            left: 70px;
+            left: 60px;
 
             width: 0;
             height: 0;
-            border-top: 15px solid transparent;
-            border-bottom: 15px solid transparent;
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
 
-            border-left: 15px solid var(--joystick-color);
+            border-left: 10px solid var(--joystick-color);
         }
 
         .joystick-arrow:nth-of-type(4) {
             position: absolute;
-            right: 70px;
+            right: 60px;
 
             width: 0;
             height: 0;
-            border-top: 15px solid transparent;
-            border-bottom: 15px solid transparent;
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
 
-            border-right: 15px solid var(--joystick-color);
+            border-right: 10px solid var(--joystick-color);
         }
 
         #note {
@@ -834,26 +834,6 @@
                 mazeElement.style.transform = `
                     rotateY(${currentRotationY}deg) rotateX(${-currentRotationX}deg)
                 `;
-            }
-        }
-
-        function requestDeviceOrientation() {
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                // iOS 13+ devices require permission
-                DeviceOrientationEvent.requestPermission()
-                    .then(response => {
-                        if (response === 'granted') {
-                            window.addEventListener('deviceorientation', handleOrientation, true);
-                            deviceOrientationEnabled = true;
-                        } else {
-                            console.warn('Device orientation permission denied.');
-                        }
-                    })
-                    .catch(console.error);
-            } else {
-                // Non iOS 13+ devices
-                window.addEventListener('deviceorientation', handleOrientation, true);
-                deviceOrientationEnabled = true;
             }
         }
 
