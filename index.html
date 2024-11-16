@@ -1,0 +1,1037 @@
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Maze Game</title>
+    <style>
+        body {
+            /* Color Palette: https://coolors.co/f06449-ede6e3-7d82b8-36382e-613f75 */
+            --background-color: #ede6e3; /* Light beige for the background */
+            --wall-color: #210124; /* Dark, neutral tone for walls */
+            --joystick-color: #7d82b8; /* Matching joystick color with accent tones */
+            --joystick-head-color: #7d82b8; /* Deeper purple for distinct joystick head */
+            --ball-color: #7d82b8; /* Bright red-orange for high contrast with background */
+            --text-color: #210124; /* Deep maroon for readable text */
+
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none; /* Prevent text selection */
+        }
+
+        #game {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px; /* Increased gap for more vertical space */
+            perspective: 600px;
+        }
+
+        #title {
+            font-size: 2em;
+            color: var(--text-color);
+            margin-bottom: 20px; /* Added margin for spacing */
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        #maze {
+            position: relative;
+            width: 350px;
+            height: 315px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px; /* Added margin for spacing */
+        }
+
+        /* Removed #end styles */
+
+        #controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px; /* Increased gap for more vertical space */
+        }
+
+        /* New buttons container */
+        #buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        #joystick {
+            background: linear-gradient(135deg, #E0E0E0, #BDBDBD);
+            position: relative;
+            background-color: var(--joystick-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        #joystick-head {
+            position: relative;
+            background-color: var(--joystick-head-color);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: grab;
+            user-select: none; /* Prevent text selection */
+
+            animation: glow 0.6s infinite alternate ease-in-out;
+            animation-delay: 4s;
+        }
+
+        @keyframes glow {
+            from {
+                transform: scale(1);
+            }
+            to {
+                transform: scale(1.2);
+            }
+        }
+
+        .joystick-arrow:nth-of-type(1) {
+            position: absolute;
+            bottom: 55px;
+
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+
+            border-bottom: 10px solid var(--joystick-color);
+        }
+
+        .joystick-arrow:nth-of-type(2) {
+            position: absolute;
+            top: 55px;
+
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+
+            border-top: 10px solid var(--joystick-color);
+        }
+
+        .joystick-arrow:nth-of-type(3) {
+            position: absolute;
+            left: 55px;
+
+            width: 0;
+            height: 0;
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+
+            border-left: 10px solid var(--joystick-color);
+        }
+
+        .joystick-arrow:nth-of-type(4) {
+            position: absolute;
+            right: 55px;
+
+            width: 0;
+            height: 0;
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+
+            border-right: 10px solid var(--joystick-color);
+        }
+
+        #note {
+            text-align: center;
+            font-size: 0.9em;
+            color: var(--text-color);
+            transition: opacity 2s;
+            max-width: 300px;
+            margin-top: 10px;
+            min-height: 80px; /* Added fixed height */
+            display: flex; /* Added for vertical alignment */
+            flex-direction: column;
+            justify-content: center; /* Center content vertically */
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: var(--joystick-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #3e0b40;
+        }
+
+        a:visited {
+            color: inherit;
+        }
+
+        .ball {
+            position: absolute;
+            margin-top: -5px;
+            margin-left: -5px;
+            border-radius: 50%;
+            background-color: var(--ball-color);
+            width: 10px;
+            height: 10px;
+        }
+
+        .wall {
+            position: absolute;
+            background-color: var(--wall-color);
+            transform-origin: top center;
+            margin-left: -5px;
+        }
+
+        .wall::before,
+        .wall::after {
+            display: block;
+            content: "";
+            width: 10px;
+            height: 10px;
+            background-color: inherit;
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        .wall::before {
+            top: -5px;
+        }
+
+        .wall::after {
+            bottom: -5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game">
+        <div id="title">Ball in a Maze</div>
+        <div id="maze">
+            <!-- Removed end element -->
+        </div>
+        <div id="controls">
+            <div id="joystick">
+                <div class="joystick-arrow"></div>
+                <div class="joystick-arrow"></div>
+                <div class="joystick-arrow"></div>
+                <div class="joystick-arrow"></div>
+                <div id="joystick-head"></div>
+            </div>
+            <div id="note">
+                Click and hold the joystick to start!
+                <p>Move the ball out of the maze.</p>
+            </div>
+            <div id="buttons">
+                <button id="reset-button">Reset Game</button>
+                <button id="new-maze-button">New Maze</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Define constants for maze dimensions
+        const mazeColumns = 10;
+        const mazeRows = 9;
+        const pathW = 25; // Path width
+        const wallW = 10; // Wall width
+        const ballSize = 10; // Width and height of the ball
+
+        // Game Elements
+        const mazeElement = document.getElementById("maze");
+        const joystickHeadElement = document.getElementById("joystick-head");
+        const noteElement = document.getElementById("note"); // Note element for instructions and game won, game failed texts
+        const resetButton = document.getElementById("reset-button");
+        const newMazeButton = document.getElementById("new-maze-button");
+
+        // Variables
+        let previousTimestamp;
+        let gameInProgress;
+        let isMouseDown = false;
+        let mouseStartX;
+        let mouseStartY;
+        let accelerationX = 0;
+        let accelerationY = 0;
+        let frictionX = 0;
+        let frictionY = 0;
+        let currentRotationX = 0;
+        let currentRotationY = 0;
+
+        const gravity = 2;
+        const friction = 0.01; // Coefficients of friction
+
+        const debugMode = false;
+
+        let balls = [];
+        let ballElements = [];
+        let walls = [];
+        let wallElements = [];
+
+        // Variables for exit detection
+        let exitSide;
+        let exitCell;
+
+        // Maze grid
+        let grid = [];
+
+        // Initialize the game
+        resetGame(true);
+
+        // Utility Functions
+        Math.minmax = (value, limit) => {
+            return Math.max(Math.min(value, limit), -limit);
+        };
+
+        const distance2D = (p1, p2) => {
+            return Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
+        };
+
+        // Angle between the two points
+        const getAngle = (p1, p2) => {
+            let angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+            return angle;
+        };
+
+        // The closest a ball and a wall cap can be
+        const closestItCanBe = (cap, ball) => {
+            let angle = getAngle(cap, ball);
+
+            const deltaX = Math.cos(angle) * (wallW / 2 + ballSize / 2);
+            const deltaY = Math.sin(angle) * (wallW / 2 + ballSize / 2);
+
+            return { x: cap.x + deltaX, y: cap.y + deltaY };
+        };
+
+        // Roll the ball around the wall cap
+        const rollAroundCap = (cap, ball) => {
+            // The direction the ball can't move any further because the wall holds it back
+            let impactAngle = getAngle(ball, cap);
+
+            // The direction the ball wants to move based on its velocity
+            let heading = getAngle(
+                { x: 0, y: 0 },
+                { x: ball.velocityX, y: ball.velocityY }
+            );
+
+            // The angle between the impact direction and the ball's desired direction
+            let impactHeadingAngle = impactAngle - heading;
+
+            // Velocity distance if not hit would have occurred
+            const velocityMagnitude = distance2D(
+                { x: 0, y: 0 },
+                { x: ball.velocityX, y: ball.velocityY }
+            );
+            // Velocity component diagonal to the impact
+            const velocityMagnitudeDiagonalToTheImpact =
+                Math.sin(impactHeadingAngle) * velocityMagnitude;
+
+            // How far should the ball be from the wall cap
+            const closestDistance = wallW / 2 + ballSize / 2;
+
+            const rotationAngle = Math.atan2(
+                velocityMagnitudeDiagonalToTheImpact,
+                closestDistance
+            );
+
+            const deltaFromCap = {
+                x: Math.cos(impactAngle + Math.PI - rotationAngle) * closestDistance,
+                y: Math.sin(impactAngle + Math.PI - rotationAngle) * closestDistance
+            };
+
+            const x = ball.x;
+            const y = ball.y;
+            const velocityX = ball.x - (cap.x + deltaFromCap.x);
+            const velocityY = ball.y - (cap.y + deltaFromCap.y);
+            const nextX = x + velocityX;
+            const nextY = y + velocityY;
+
+            return { x, y, velocityX, velocityY, nextX, nextY };
+        };
+
+        // Decreases the absolute value of a number but keeps its sign, doesn't go below abs 0
+        const slow = (number, difference) => {
+            if (Math.abs(number) <= difference) return 0;
+            if (number > difference) return number - difference;
+            return number + difference;
+        };
+
+        // Joystick Event Listeners
+        joystickHeadElement.addEventListener("mousedown", function (event) {
+            event.preventDefault(); // Prevent default browser behavior
+            isMouseDown = true;
+            mouseStartX = event.clientX;
+            mouseStartY = event.clientY;
+            joystickHeadElement.style.cssText = `
+                animation: none;
+                cursor: grabbing;
+            `;
+            if (!gameInProgress) {
+                gameInProgress = true;
+                window.requestAnimationFrame(main);
+                noteElement.style.opacity = 0;
+            }
+        });
+
+        window.addEventListener("mouseup", function (event) {
+            if (isMouseDown) {
+                isMouseDown = false;
+                joystickHeadElement.style.cssText = `
+                    left: 0;
+                    top: 0;
+                    animation: none;
+                    cursor: grab;
+                `;
+                // Maze remains tilted, acceleration continues based on currentRotationX and currentRotationY
+            }
+        });
+
+        window.addEventListener("mousemove", function (event) {
+            if (isMouseDown) {
+                const mouseDeltaX = -Math.minmax(mouseStartX - event.clientX, 15);
+                const mouseDeltaY = -Math.minmax(mouseStartY - event.clientY, 15);
+
+                joystickHeadElement.style.cssText = `
+                    left: ${mouseDeltaX}px;
+                    top: ${mouseDeltaY}px;
+                    animation: none;
+                    cursor: grabbing;
+                `;
+
+                const rotationY = mouseDeltaX * 0.8; // Max rotation = 12
+                const rotationX = mouseDeltaY * 0.8;
+
+                currentRotationX = rotationX;
+                currentRotationY = rotationY;
+
+                mazeElement.style.cssText = `
+                    transform: rotateY(${currentRotationY}deg) rotateX(${-currentRotationX}deg)
+                `;
+            }
+        });
+
+        // Prevent joystick from being dragged without holding down the mouse button
+        joystickHeadElement.addEventListener("click", function (event) {
+            event.preventDefault();
+        });
+
+        // Add event listener for reset button
+        resetButton.addEventListener("click", function () {
+            resetGame();
+        });
+
+        // Add event listener for new maze button
+        newMazeButton.addEventListener("click", function () {
+            resetGame(true);
+        });
+
+        function resetGame(generateNewMaze = false) {
+            previousTimestamp = undefined;
+            gameInProgress = false;
+            isMouseDown = false;
+            mouseStartX = undefined;
+            mouseStartY = undefined;
+            accelerationX = 0;
+            accelerationY = 0;
+            frictionX = 0;
+            frictionY = 0;
+            currentRotationX = 0;
+            currentRotationY = 0;
+
+            mazeElement.style.cssText = `
+                transform: rotateY(0deg) rotateX(0deg)
+            `;
+
+            joystickHeadElement.style.cssText = `
+                left: 0;
+                top: 0;
+                animation: glow;
+                cursor: grab;
+            `;
+
+            noteElement.innerHTML = `Drag the joystick to tilt the maze!
+                <p>Help the ball escape!</p>`;
+            noteElement.style.opacity = 1;
+
+            // Clear previous ball elements
+            if (ballElements.length) {
+                ballElements.forEach((ballElement) => {
+                    mazeElement.removeChild(ballElement);
+                });
+                ballElements = [];
+            }
+
+            // Clear previous wall elements
+            if (wallElements.length) {
+                wallElements.forEach((wallElement) => {
+                    mazeElement.removeChild(wallElement);
+                });
+                wallElements = [];
+            }
+
+            // Fixed starting position
+            const ballStart = { column: mazeColumns-1, row: mazeRows-1};
+
+            // Fixed exit side and exit cell (Bottom-Right Corner)
+            exitSide = 'left';
+            exitCell = { column: 0, row: 0};
+
+            const ballStartX = ballStart.column * (wallW + pathW) + (wallW / 2 + pathW / 2);
+            const ballStartY = ballStart.row * (wallW + pathW) + (wallW / 2 + pathW / 2);
+
+            balls = [{
+                x: ballStartX,
+                y: ballStartY,
+                velocityX: 0,
+                velocityY: 0
+            }];
+
+            // Draw the ball
+            balls.forEach(({ x, y }) => {
+                const ball = document.createElement("div");
+                ball.setAttribute("class", "ball");
+                ball.style.cssText = `left: ${x}px; top: ${y}px; `;
+
+                mazeElement.appendChild(ball);
+                ballElements.push(ball);
+            });
+
+            if (generateNewMaze) {
+                generateMaze();
+            } else {
+                // Draw walls
+                walls.forEach(({ x, y, horizontal, length }) => {
+                    const wall = document.createElement("div");
+                    wall.setAttribute("class", "wall");
+                    wall.style.cssText = `
+                        left: ${x}px;
+                        top: ${y}px;
+                        width: ${wallW}px;
+                        height: ${length}px;
+                        transform: rotate(${horizontal ? -90 : 0}deg);
+                    `;
+
+                    mazeElement.appendChild(wall);
+                    wallElements.push(wall);
+                });
+            }
+        }
+
+        function generateMaze() {
+            // Initialize grid
+            grid = [];
+            for (let y = 0; y < mazeRows; y++) {
+                const row = [];
+                for (let x = 0; x < mazeColumns; x++) {
+                    row.push({
+                        x: x,
+                        y: y,
+                        walls: { top: true, right: true, bottom: true, left: true },
+                        visited: false
+                    });
+                }
+                grid.push(row);
+            }
+
+            const stack = [];
+
+            // Start at fixed cell (top-left corner)
+            const startX = 0;
+            const startY = 0;
+
+            const startCell = grid[startY][startX];
+            startCell.visited = true;
+
+            stack.push(startCell);
+
+            while (stack.length > 0) {
+                const currentCell = stack.pop();
+
+                // Get unvisited neighbors
+                const neighbors = getUnvisitedNeighbors(currentCell);
+
+                if (neighbors.length > 0) {
+                    // Push current cell back to the stack
+                    stack.push(currentCell);
+
+                    // Choose a random unvisited neighbor
+                    const randomIndex = Math.floor(Math.random() * neighbors.length);
+                    const nextCell = neighbors[randomIndex];
+
+                    // Remove wall between currentCell and nextCell
+                    removeWalls(currentCell, nextCell);
+
+                    // Mark nextCell as visited
+                    nextCell.visited = true;
+
+                    // Push nextCell to the stack
+                    stack.push(nextCell);
+                }
+            }
+
+            // Convert grid to walls array
+            walls = [];
+
+            // Add outer walls with opening
+            // Top wall
+            for (let x = 0; x < mazeColumns; x++) {
+                if (!(exitSide === 'top' && exitCell.column === x)) {
+                    walls.push({
+                        column: x,
+                        row: 0,
+                        horizontal: true,
+                        length: 1
+                    });
+                }
+            }
+
+            // Bottom wall
+            for (let x = 0; x < mazeColumns; x++) {
+                if (!(exitSide === 'bottom' && exitCell.column === x)) {
+                    walls.push({
+                        column: x,
+                        row: mazeRows,
+                        horizontal: true,
+                        length: 1
+                    });
+                }
+            }
+
+            // Left wall
+            for (let y = 0; y < mazeRows; y++) {
+                if (!(exitSide === 'left' && exitCell.row === y)) {
+                    walls.push({
+                        column: 0,
+                        row: y,
+                        horizontal: false,
+                        length: 1
+                    });
+                }
+            }
+
+            // Right wall
+            for (let y = 0; y < mazeRows; y++) {
+                if (!(exitSide === 'right' && exitCell.row === y)) {
+                    walls.push({
+                        column: mazeColumns,
+                        row: y,
+                        horizontal: false,
+                        length: 1
+                    });
+                }
+            }
+
+            // Go through grid and add walls
+            for (let y = 0; y < mazeRows; y++) {
+                for (let x = 0; x < mazeColumns; x++) {
+                    const cell = grid[y][x];
+
+                    // If there is a wall on the right
+                    if (cell.walls.right) {
+                        // Add vertical wall at (x + 1, y), length 1
+                        walls.push({
+                            column: x + 1,
+                            row: y,
+                            horizontal: false,
+                            length: 1
+                        });
+                    }
+
+                    // If there is a wall at the bottom
+                    if (cell.walls.bottom) {
+                        // Add horizontal wall at (x, y + 1), length 1
+                        walls.push({
+                            column: x,
+                            row: y + 1,
+                            horizontal: true,
+                            length: 1
+                        });
+                    }
+                }
+            }
+
+            // Convert walls to x, y, length
+            walls = walls.map((wall) => ({
+                x: wall.column * (wallW + pathW),
+                y: wall.row * (wallW + pathW),
+                horizontal: wall.horizontal,
+                length: wall.length * (wallW + pathW)
+            }));
+
+            // Draw walls
+            walls.forEach(({ x, y, horizontal, length }) => {
+                const wall = document.createElement("div");
+                wall.setAttribute("class", "wall");
+                wall.style.cssText = `
+                    left: ${x}px;
+                    top: ${y}px;
+                    width: ${wallW}px;
+                    height: ${length}px;
+                    transform: rotate(${horizontal ? -90 : 0}deg);
+                `;
+
+                mazeElement.appendChild(wall);
+                wallElements.push(wall);
+            });
+        }
+
+
+        function getUnvisitedNeighbors(cell) {
+            const neighbors = [];
+
+            const x = cell.x;
+            const y = cell.y;
+
+            // top neighbor
+            if (y > 0) {
+                const topNeighbor = grid[y - 1][x];
+                if (!topNeighbor.visited) {
+                    neighbors.push(topNeighbor);
+                }
+            }
+
+            // right neighbor
+            if (x < mazeColumns - 1) {
+                const rightNeighbor = grid[y][x + 1];
+                if (!rightNeighbor.visited) {
+                    neighbors.push(rightNeighbor);
+                }
+            }
+
+            // bottom neighbor
+            if (y < mazeRows - 1) {
+                const bottomNeighbor = grid[y + 1][x];
+                if (!bottomNeighbor.visited) {
+                    neighbors.push(bottomNeighbor);
+                }
+            }
+
+            // left neighbor
+            if (x > 0) {
+                const leftNeighbor = grid[y][x - 1];
+                if (!leftNeighbor.visited) {
+                    neighbors.push(leftNeighbor);
+                }
+            }
+
+            return neighbors;
+        }
+
+        function removeWalls(cell1, cell2) {
+            const x = cell1.x - cell2.x;
+            const y = cell1.y - cell2.y;
+
+            if (x === 1) {
+                // cell2 is to the left of cell1
+                cell1.walls.left = false;
+                cell2.walls.right = false;
+            } else if (x === -1) {
+                // cell2 is to the right of cell1
+                cell1.walls.right = false;
+                cell2.walls.left = false;
+            } else if (y === 1) {
+                // cell2 is above cell1
+                cell1.walls.top = false;
+                cell2.walls.bottom = false;
+            } else if (y === -1) {
+                // cell2 is below cell1
+                cell1.walls.bottom = false;
+                cell2.walls.top = false;
+            }
+        }
+
+        // Main game loop
+        function main(timestamp) {
+            // It is possible to reset the game mid-game. This case the loop should stop
+            if (!gameInProgress) return;
+
+            if (previousTimestamp === undefined) {
+                previousTimestamp = timestamp;
+                window.requestAnimationFrame(main);
+                return;
+            }
+
+            const maxVelocity = 1.5;
+
+            // Time passed since last cycle divided by 16
+            // This function gets called every ~16 ms on average so dividing by 16 will result in ~1
+            const timeElapsed = (timestamp - previousTimestamp) / 16;
+
+            try {
+                // Calculate acceleration and friction based on current rotation
+                accelerationX = gravity * Math.sin((currentRotationY / 180) * Math.PI);
+                accelerationY = gravity * Math.sin((currentRotationX / 180) * Math.PI);
+                frictionX = gravity * Math.cos((currentRotationY / 180) * Math.PI) * friction;
+                frictionY = gravity * Math.cos((currentRotationX / 180) * Math.PI) * friction;
+
+                const velocityChangeX = accelerationX * timeElapsed;
+                const velocityChangeY = accelerationY * timeElapsed;
+                const frictionDeltaX = frictionX * timeElapsed;
+                const frictionDeltaY = frictionY * timeElapsed;
+
+                balls.forEach((ball) => {
+                    if (accelerationX === 0) {
+                        // No acceleration
+                        ball.velocityX = slow(ball.velocityX, frictionDeltaX);
+                    } else {
+                        ball.velocityX += velocityChangeX;
+                        ball.velocityX -= Math.sign(velocityChangeX) * frictionDeltaX;
+                        ball.velocityX = Math.minmax(ball.velocityX, maxVelocity);
+                    }
+
+                    if (accelerationY === 0) {
+                        // No acceleration
+                        ball.velocityY = slow(ball.velocityY, frictionDeltaY);
+                    } else {
+                        ball.velocityY += velocityChangeY;
+                        ball.velocityY -= Math.sign(accelerationY) * frictionDeltaY;
+                        ball.velocityY = Math.minmax(ball.velocityY, maxVelocity);
+                    }
+
+                    // Preliminary next ball position, only becomes true if no hit occurs
+                    // Used only for hit testing, does not mean that the ball will reach this position
+                    ball.nextX = ball.x + ball.velocityX;
+                    ball.nextY = ball.y + ball.velocityY;
+
+                    if (debugMode) console.log("tick", ball);
+
+                    walls.forEach((wall, wi) => {
+                        if (wall.horizontal) {
+                            // Horizontal wall
+                            if (
+                                ball.nextY + ballSize / 2 >= wall.y - wallW / 2 &&
+                                ball.nextY - ballSize / 2 <= wall.y + wallW / 2
+                            ) {
+                                // Ball got within the strip of the wall
+                                // (not necessarily hit it, could be before or after)
+
+                                const wallStart = {
+                                    x: wall.x,
+                                    y: wall.y
+                                };
+                                const wallEnd = {
+                                    x: wall.x + wall.length,
+                                    y: wall.y
+                                };
+
+                                if (
+                                    ball.nextX + ballSize / 2 >= wallStart.x - wallW / 2 &&
+                                    ball.nextX < wallStart.x
+                                ) {
+                                    // Ball might hit the left cap of a horizontal wall
+                                    const distance = distance2D(wallStart, {
+                                        x: ball.nextX,
+                                        y: ball.nextY
+                                    });
+                                    if (distance < ballSize / 2 + wallW / 2) {
+                                        if (debugMode && wi > 4)
+                                            console.warn("too close h head", distance, ball);
+
+                                        // Ball hits the left cap of a horizontal wall
+                                        const closest = closestItCanBe(wallStart, {
+                                            x: ball.nextX,
+                                            y: ball.nextY
+                                        });
+                                        const rolled = rollAroundCap(wallStart, {
+                                            x: closest.x,
+                                            y: closest.y,
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
+                                        });
+
+                                        Object.assign(ball, rolled);
+                                    }
+                                }
+
+                                if (
+                                    ball.nextX - ballSize / 2 <= wallEnd.x + wallW / 2 &&
+                                    ball.nextX > wallEnd.x
+                                ) {
+                                    // Ball might hit the right cap of a horizontal wall
+                                    const distance = distance2D(wallEnd, {
+                                        x: ball.nextX,
+                                        y: ball.nextY
+                                    });
+                                    if (distance < ballSize / 2 + wallW / 2) {
+                                        if (debugMode && wi > 4)
+                                            console.warn("too close h tail", distance, ball);
+
+                                        // Ball hits the right cap of a horizontal wall
+                                        const closest = closestItCanBe(wallEnd, {
+                                            x: ball.nextX,
+                                            y: ball.nextY
+                                        });
+                                        const rolled = rollAroundCap(wallEnd, {
+                                            x: closest.x,
+                                            y: closest.y,
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
+                                        });
+
+                                        Object.assign(ball, rolled);
+                                    }
+                                }
+
+                                if (ball.nextX >= wallStart.x && ball.nextX <= wallEnd.x) {
+                                    // The ball got inside the main body of the wall
+                                    if (ball.nextY < wall.y) {
+                                        // Hit horizontal wall from top
+                                        ball.nextY = wall.y - wallW / 2 - ballSize / 2;
+                                    } else {
+                                        // Hit horizontal wall from bottom
+                                        ball.nextY = wall.y + wallW / 2 + ballSize / 2;
+                                    }
+                                    ball.y = ball.nextY;
+                                    ball.velocityY = -ball.velocityY / 3;
+
+                                    if (debugMode && wi > 4)
+                                        console.error("crossing h line, HIT", ball);
+                                }
+                            }
+                        } else {
+                            // Vertical wall
+                            if (
+                                ball.nextX + ballSize / 2 >= wall.x - wallW / 2 &&
+                                ball.nextX - ballSize / 2 <= wall.x + wallW / 2
+                            ) {
+                                // Ball got within the strip of the wall
+                                // (not necessarily hit it, could be before or after)
+
+                                const wallStart = {
+                                    x: wall.x,
+                                    y: wall.y
+                                };
+                                const wallEnd = {
+                                    x: wall.x,
+                                    y: wall.y + wall.length
+                                };
+
+                                if (
+                                    ball.nextY + ballSize / 2 >= wallStart.y - wallW / 2 &&
+                                    ball.nextY < wallStart.y
+                                ) {
+                                    // Ball might hit the top cap of a vertical wall
+                                    const distance = distance2D(wallStart, {
+                                        x: ball.nextX,
+                                        y: ball.nextY
+                                    });
+                                    if (distance < ballSize / 2 + wallW / 2) {
+                                        if (debugMode && wi > 4)
+                                            console.warn("too close v head", distance, ball);
+
+                                        // Ball hits the top cap of a vertical wall
+                                        const closest = closestItCanBe(wallStart, {
+                                            x: ball.nextX,
+                                            y: ball.nextY
+                                        });
+                                        const rolled = rollAroundCap(wallStart, {
+                                            x: closest.x,
+                                            y: closest.y,
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
+                                        });
+
+                                        Object.assign(ball, rolled);
+                                    }
+                                }
+
+                                if (
+                                    ball.nextY - ballSize / 2 <= wallEnd.y + wallW / 2 &&
+                                    ball.nextY > wallEnd.y
+                                ) {
+                                    // Ball might hit the bottom cap of a vertical wall
+                                    const distance = distance2D(wallEnd, {
+                                        x: ball.nextX,
+                                        y: ball.nextY
+                                    });
+                                    if (distance < ballSize / 2 + wallW / 2) {
+                                        if (debugMode && wi > 4)
+                                            console.warn("too close v tail", distance, ball);
+
+                                        // Ball hits the bottom cap of a vertical wall
+                                        const closest = closestItCanBe(wallEnd, {
+                                            x: ball.nextX,
+                                            y: ball.nextY
+                                        });
+                                        const rolled = rollAroundCap(wallEnd, {
+                                            x: closest.x,
+                                            y: closest.y,
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
+                                        });
+
+                                        Object.assign(ball, rolled);
+                                    }
+                                }
+
+                                if (ball.nextY >= wallStart.y && ball.nextY <= wallEnd.y) {
+                                    // The ball got inside the main body of the wall
+                                    if (ball.nextX < wall.x) {
+                                        // Hit vertical wall from left
+                                        ball.nextX = wall.x - wallW / 2 - ballSize / 2;
+                                    } else {
+                                        // Hit vertical wall from right
+                                        ball.nextX = wall.x + wallW / 2 + ballSize / 2;
+                                    }
+                                    ball.x = ball.nextX;
+                                    ball.velocityX = -ball.velocityX / 3;
+
+                                    if (debugMode && wi > 4)
+                                        console.error("crossing v line, HIT", ball);
+                                }
+                            }
+                        }
+                    });
+
+                    // Adjust ball metadata
+                    ball.x += ball.velocityX;
+                    ball.y += ball.velocityY;
+
+                    // Win detection
+                    let exitedMaze = false;
+
+                    const cellSize = wallW + pathW;
+                    const mazeWidth = mazeColumns * cellSize;
+                    const mazeHeight = mazeRows * cellSize;
+
+                    if (exitSide === 'top' && ball.y <= -ballSize) {
+                        exitedMaze = true;
+                    } else if (exitSide === 'bottom' && ball.y >= mazeHeight + ballSize) {
+                        exitedMaze = true;
+                    } else if (exitSide === 'left' && ball.x <= -ballSize) {
+                        exitedMaze = true;
+                    } else if (exitSide === 'right' && ball.x >= mazeWidth + ballSize) {
+                        exitedMaze = true;
+                    }
+
+                    if (exitedMaze) {
+                        noteElement.innerHTML = `Congrats, the ball is free!`;
+                        noteElement.style.opacity = 1;
+                        gameInProgress = false;
+                    }
+                });
+
+                // Move balls to their new position on the UI
+                balls.forEach(({ x, y }, index) => {
+                    ballElements[index].style.cssText = `left: ${x}px; top: ${y}px; `;
+                });
+
+                if (gameInProgress) {
+                    previousTimestamp = timestamp;
+                    window.requestAnimationFrame(main);
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
