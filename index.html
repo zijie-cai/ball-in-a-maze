@@ -438,7 +438,8 @@
         let deviceOrientationEnabled = false;
 
         // Initialize the game
-        resetGame(true);
+        // Moved resetGame(true) to be called after requestDeviceOrientation
+        // resetGame(true); 
 
         // Utility Functions
         Math.minmax = (value, limit) => {
@@ -1231,8 +1232,10 @@
 
                                         // Ball hits the bottom cap of a vertical wall
                                         const closest = closestItCanBe(wallEnd, {
-                                            x: ball.nextX,
-                                            y: ball.nextY
+                                            x: closest.x,
+                                            y: closest.y,
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
                                         });
                                         const rolled = rollAroundCap(wallEnd, {
                                             x: closest.x,
@@ -1366,6 +1369,12 @@
         window.addEventListener('resize', () => {
             confettiCanvas.width = window.innerWidth;
             confettiCanvas.height = window.innerHeight;
+        });
+
+        // Automatically request device orientation permission on page load
+        window.addEventListener('load', () => {
+            requestDeviceOrientation();
+            resetGame(true);
         });
     </script>
 </body>
