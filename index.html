@@ -217,23 +217,6 @@
         .wall::after {
             bottom: -5px;
         }
-
-        /* Button for enabling tilt control */
-        #enable-tilt-button {
-            padding: 10px 20px;
-            font-size: 1em;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            display: none; /* Hidden by default */
-        }
-
-        #enable-tilt-button.show {
-            display: block;
-        }
-
     </style>
 </head>
 <body>
@@ -258,8 +241,6 @@
                 <button id="reset-button">Reset Game</button>
                 <button id="new-maze-button">New Maze</button>
             </div>
-            <!-- Button to enable device orientation -->
-            <button id="enable-tilt-button">Enable Tilt Control</button>
         </div>
     </div>
     <script>
@@ -276,11 +257,10 @@
         const noteElement = document.getElementById("note"); // Note element for instructions and game won, game failed texts
         const resetButton = document.getElementById("reset-button");
         const newMazeButton = document.getElementById("new-maze-button");
-        const enableTiltButton = document.getElementById("enable-tilt-button");
 
         // Variables
         let previousTimestamp;
-        let gameInProgress;
+        let gameInProgress = false;
         let isMouseDown = false;
         let mouseStartX;
         let mouseStartY;
@@ -312,6 +292,7 @@
         let tiltRotationX = 0;
         let tiltRotationY = 0;
         let deviceOrientationSupported = false;
+        let deviceOrientationEnabled = false;
 
         // Initialize the game
         resetGame(true);
@@ -419,31 +400,6 @@
             resetGame(true);
         });
 
-        // Add event listener for enable tilt button
-        enableTiltButton.addEventListener("click", function () {
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                // iOS 13+ devices require permission
-                DeviceOrientationEvent.requestPermission()
-                    .then(response => {
-                        if (response === 'granted') {
-                            window.addEventListener('deviceorientation', handleOrientation, true);
-                            enableTiltButton.style.display = 'none';
-                            noteElement.innerHTML = `Drag the joystick or tilt your device to tilt the maze!
-                                <p>Help the ball escape!</p>`;
-                        } else {
-                            alert('Device orientation permission denied. Tilt controls will not be available.');
-                        }
-                    })
-                    .catch(console.error);
-            } else {
-                // Non iOS 13+ devices
-                window.addEventListener('deviceorientation', handleOrientation, true);
-                enableTiltButton.style.display = 'none';
-                noteElement.innerHTML = `Drag the joystick or tilt your device to tilt the maze!
-                    <p>Help the ball escape!</p>`;
-            }
-        });
-
         function startInteraction(event) {
             event.preventDefault(); // Prevent default browser behavior
             isMouseDown = true;
@@ -468,6 +424,11 @@
                 gameInProgress = true;
                 window.requestAnimationFrame(main);
                 noteElement.style.opacity = 0;
+
+                // Request device orientation permission if not already enabled
+                if (!deviceOrientationEnabled) {
+                    requestDeviceOrientation();
+                }
             }
         }
 
@@ -553,20 +514,9 @@
                 position: relative;
             `;
 
-            noteElement.innerHTML = `Drag the joystick or enable tilt control to tilt the maze!
+            noteElement.innerHTML = `Drag the joystick or tilt your device to tilt the maze!
                 <p>Help the ball escape!</p>`;
             noteElement.style.opacity = 1;
-
-            // Show the enable tilt button if device orientation is supported
-            if (window.DeviceOrientationEvent) {
-                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    // iOS 13+ devices require permission
-                    enableTiltButton.classList.add('show');
-                } else {
-                    // Non iOS 13+ devices
-                    enableTiltButton.classList.add('show');
-                }
-            }
 
             // Clear previous ball elements
             if (ballElements.length) {
@@ -790,6 +740,7 @@
             });
         }
 
+
         function getUnvisitedNeighbors(cell) {
             const neighbors = [];
 
@@ -883,6 +834,26 @@
                 mazeElement.style.transform = `
                     rotateY(${currentRotationY}deg) rotateX(${-currentRotationX}deg)
                 `;
+            }
+        }
+
+        function requestDeviceOrientation() {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                // iOS 13+ devices require permission
+                DeviceOrientationEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation, true);
+                            deviceOrientationEnabled = true;
+                        } else {
+                            console.warn('Device orientation permission denied.');
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                // Non iOS 13+ devices
+                window.addEventListener('deviceorientation', handleOrientation, true);
+                deviceOrientationEnabled = true;
             }
         }
 
@@ -1168,6 +1139,29 @@
                 }
             } catch (error) {
                 console.error(error);
+            }
+        }
+
+        // Request Device Orientation Permissions Automatically on Game Start
+        function requestDeviceOrientation() {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                // iOS 13+ devices require permission
+                DeviceOrientationEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation, true);
+                            deviceOrientationEnabled = true;
+                        } else {
+                            console.warn('Device orientation permission denied.');
+                        }
+                    })
+                    .catch(console.error);
+            } else if (window.DeviceOrientationEvent) {
+                // Non iOS 13+ devices
+                window.addEventListener('deviceorientation', handleOrientation, true);
+                deviceOrientationEnabled = true;
+            } else {
+                console.warn('Device orientation not supported.');
             }
         }
     </script>
