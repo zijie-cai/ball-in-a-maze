@@ -437,8 +437,8 @@
         let deviceOrientationSupported = false;
         let deviceOrientationEnabled = false;
 
-        // Initialize the game and start automatically
-        resetGame(true, true); // <-- Modification: Added second parameter 'true' to start immediately
+        // Initialize the game
+        resetGame(true);
 
         // Utility Functions
         Math.minmax = (value, limit) => {
@@ -535,12 +535,12 @@
 
         // Add event listener for reset button
         resetButton.addEventListener("click", function () {
-            resetGame(false, true); // <-- Modification: Added second parameter 'true' to start immediately
+            resetGame();
         });
 
         // Add event listener for new maze button
         newMazeButton.addEventListener("click", function () {
-            resetGame(true, true); // <-- Modification: Added second parameter 'true' to start immediately
+            resetGame(true);
         });
 
         // Add event listener for instruction button
@@ -654,12 +654,7 @@
             }
         }
 
-        /**
-         * Modified resetGame function to accept a second parameter 'startImmediately'
-         * @param {boolean} generateNewMaze - Whether to generate a new maze
-         * @param {boolean} startImmediately - Whether to start the game immediately after resetting
-         */
-        function resetGame(generateNewMaze = false, startImmediately = false) {
+        function resetGame(generateNewMaze = false) {
             previousTimestamp = undefined;
             gameInProgress = false;
             isMouseDown = false;
@@ -767,19 +762,6 @@
                 // Highlight the exit border
                 highlightExitBorder();
             }
-
-            // **Modification Start**
-            if (startImmediately) {
-                // Apply a slight default tilt to start the game automatically
-                currentRotationX = 5; // Adjust as needed for desired tilt
-                currentRotationY = 5; // Adjust as needed for desired tilt
-                mazeElement.style.transform = `
-                    rotateY(${currentRotationY}deg) rotateX(${-currentRotationX}deg)
-                `;
-                gameInProgress = true;
-                window.requestAnimationFrame(main);
-            }
-            // **Modification End**
         }
 
         function generateMaze() {
