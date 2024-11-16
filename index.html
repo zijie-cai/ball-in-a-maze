@@ -2,13 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Ball in a Maze</title>
+    <title>Maze Game</title>
     <!-- 1. Add Meta Viewport for Mobile Responsiveness -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- 2. Include Canvas Confetti Library -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <style>
-        /* Existing CSS styles remain unchanged */
         body {
             --background-color: #ede6e3; 
             --wall-color: #210124;
@@ -366,7 +365,7 @@
         <div class="modal-content">
             <span class="close-button" id="close-instruction">&times;</span>
             <h2>How to Play</h2>
-            <p>Tilt the maze using your device's orientation!</p>
+            <p>Tilt the maze using the joystick or your mobile device!</p>
             <p>Guide the ball to the exit.</p>
         </div>
     </div>
@@ -440,10 +439,11 @@
 
         // Initialize the game
         resetGame(true);
-        startGameAutomatically(); // Start the game automatically on page load
 
         // Utility Functions
-        // Removed Math.minmax to avoid extending the Math object
+        Math.minmax = (value, limit) => {
+            return Math.max(Math.min(value, limit), -limit);
+        };
 
         const distance2D = (p1, p2) => {
             return Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
@@ -536,13 +536,11 @@
         // Add event listener for reset button
         resetButton.addEventListener("click", function () {
             resetGame();
-            startGameAutomatically(); // Restart the game after reset
         });
 
         // Add event listener for new maze button
         newMazeButton.addEventListener("click", function () {
             resetGame(true);
-            startGameAutomatically(); // Start the game after generating a new maze
         });
 
         // Add event listener for instruction button
@@ -589,7 +587,16 @@
                 left: 0px;
                 top: 0px;
             `;
-            // Removed game start logic from joystick interaction
+            if (!gameInProgress) {
+                gameInProgress = true;
+                window.requestAnimationFrame(main);
+                noteElement.style.opacity = 0;
+
+                // Request device orientation permission if not already enabled
+                if (!deviceOrientationEnabled) {
+                    requestDeviceOrientation();
+                }
+            }
         }
 
         function endInteraction(event) {
@@ -625,8 +632,8 @@
                     clientY = event.touches[0].clientY;
                 }
 
-                const mouseDeltaX = -Math.min(mouseStartX - clientX, 40);
-                const mouseDeltaY = -Math.min(mouseStartY - clientY, 40);
+                const mouseDeltaX = -Math.minmax(mouseStartX - clientX, 40);
+                const mouseDeltaY = -Math.minmax(mouseStartY - clientY, 40);
 
                 joystickHeadElement.style.cssText = `
                     left: ${mouseDeltaX}px;
@@ -709,7 +716,7 @@
             // Fixed starting position
             const ballStart = { column: mazeColumns-1, row: mazeRows-1};
 
-            // Fixed exit side and exit cell (Left side, middle row)
+            // Fixed exit side and exit cell (Bottom-Left Corner)
             exitSide = 'left';
             exitCell = { column: 0, row: Math.floor(mazeRows / 2) };
 
@@ -1050,8 +1057,7 @@
                     } else {
                         ball.velocityX += velocityChangeX;
                         ball.velocityX -= Math.sign(accelerationX) * frictionDeltaX;
-                        ball.velocityX = Math.min(ball.velocityX, maxVelocity);
-                        ball.velocityX = Math.max(ball.velocityX, -maxVelocity);
+                        ball.velocityX = Math.minmax(ball.velocityX, maxVelocity);
                     }
 
                     if (accelerationY === 0) {
@@ -1060,11 +1066,11 @@
                     } else {
                         ball.velocityY += velocityChangeY;
                         ball.velocityY -= Math.sign(accelerationY) * frictionDeltaY;
-                        ball.velocityY = Math.min(ball.velocityY, maxVelocity);
-                        ball.velocityY = Math.max(ball.velocityY, -maxVelocity);
+                        ball.velocityY = Math.minmax(ball.velocityY, maxVelocity);
                     }
 
                     // Preliminary next ball position, only becomes true if no hit occurs
+                    // Used only for hit testing, does not mean that the ball will reach this position
                     ball.nextX = ball.x + ball.velocityX;
                     ball.nextY = ball.y + ball.velocityY;
 
@@ -1303,20 +1309,6 @@
             }
         }
 
-        // Start the game automatically
-        function startGameAutomatically() {
-            if (!gameInProgress) {
-                gameInProgress = true;
-                window.requestAnimationFrame(main);
-                noteElement.style.opacity = 0;
-
-                // Request device orientation permission
-                if (!deviceOrientationEnabled) {
-                    requestDeviceOrientation();
-                }
-            }
-        }
-
         // Request Device Orientation Permissions Automatically on Game Start
         function requestDeviceOrientation() {
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -1328,8 +1320,6 @@
                             deviceOrientationEnabled = true;
                         } else {
                             console.warn('Device orientation permission denied.');
-                            // Inform the user and rely on the joystick
-                            showToast('Device orientation permission denied. Use the joystick to control the ball.');
                         }
                     })
                     .catch(console.error);
@@ -1339,8 +1329,6 @@
                 deviceOrientationEnabled = true;
             } else {
                 console.warn('Device orientation not supported.');
-                // Inform the user and rely on the joystick
-                showToast('Device orientation not supported. Use the joystick to control the ball.');
             }
         }
 
