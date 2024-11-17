@@ -215,10 +215,80 @@
             cursor: pointer;
         }
 
-        .modal-content input[type="checkbox"] {
+        /* Updated Toggle Switch Styles */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
             margin-right: 10px;
-            transform: scale(1.2);
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
             cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 24px;
+        }
+
+        .slider::before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--joystick-color);
+        }
+
+        input:focus + .slider {
+            box-shadow: 0 0 1px var(--joystick-color);
+        }
+
+        input:checked + .slider::before {
+            transform: translateX(26px);
+        }
+
+        /* Add an icon for device orientation */
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            font-size: 1em;
+            color: var(--text-color);
+        }
+
+        .toggle-label::before {
+            content: "\1F4F1"; /* Unicode for mobile phone */
+            margin-right: 8px;
+            font-size: 1.2em;
+        }
+
+        .modal-content label input[type="checkbox"] {
+            display: none;
         }
 
         .close-button {
@@ -380,10 +450,13 @@
             <p>Tilt the maze using the joystick or your mobile device!</p>
             <p>Guide the ball to the exit.</p>
             <!-- Device Orientation Toggle -->
-            <label for="orientation-toggle">
-                <input type="checkbox" id="orientation-toggle">
-                Enable Device Orientation
-            </label>
+            <div class="toggle-container">
+                <label class="switch" aria-label="Enable Device Orientation">
+                    <input type="checkbox" id="orientation-toggle" aria-checked="false">
+                    <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">Enable Device Orientation</span>
+            </div>
         </div>
     </div>
 
@@ -594,6 +667,7 @@
         if (!isMobile) {
             // Hide the orientation toggle if not on a mobile device
             orientationToggle.parentElement.style.display = 'none';
+            document.querySelector('.toggle-label').style.display = 'none';
         } else {
             // By default, device orientation is disabled
             orientationToggle.checked = false;
@@ -605,17 +679,20 @@
                 requestDeviceOrientation()
                     .then(() => {
                         showToast('Device orientation enabled.');
+                        this.setAttribute('aria-checked', 'true');
                     })
                     .catch((error) => {
                         console.error(error);
                         showToast('Failed to enable device orientation.');
                         this.checked = false; // Revert checkbox if failed
+                        this.setAttribute('aria-checked', 'false');
                     });
             } else {
                 // Disable device orientation
                 window.removeEventListener('deviceorientation', handleOrientation, true);
                 deviceOrientationEnabled = false;
                 showToast('Device orientation disabled.');
+                this.setAttribute('aria-checked', 'false');
             }
         });
 
