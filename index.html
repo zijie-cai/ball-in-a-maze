@@ -750,8 +750,8 @@
                     position: relative;
                 `;
                 // Reset rotation to tiltRotation if available
-                currentRotationX = tiltRotationX;
-                currentRotationY = tiltRotationY;
+                currentRotationX = 0;
+                currentRotationY = 0;
                 mazeElement.style.transform = `
                     rotateY(${currentRotationY}deg) rotateX(${-currentRotationX}deg)
                 `;
