@@ -83,7 +83,7 @@
             border-right: 2px solid #ccc;
             border-radius: 10px;
             box-sizing: border-box;
-            transition: transform 0.5s ease, border 0.3s ease; /* Added transform transition */
+            transition: border 0.3s ease; /* Smooth transition for border color changes */
         }
 
         #controls {
@@ -113,13 +113,12 @@
             touch-action: none; /* Prevent default touch actions */
         }
 
-        /* Increased joystick head size */
         #joystick-head {
             position: relative;
             background-color: var(--joystick-head-color);
             border-radius: 50%;
-            width: 20px; /* Increased from 15px to 20px */
-            height: 20px; /* Increased from 15px to 20px */
+            width: 15px; /* Reduced from 20px to 15px */
+            height: 15px; /* Reduced from 20px to 15px */
             cursor: grab;
             user-select: none; /* Prevent text selection */
 
@@ -694,21 +693,8 @@
                 deviceOrientationEnabled = false;
                 showToast('Device orientation disabled.');
                 this.setAttribute('aria-checked', 'false');
-                
-                // Reset maze to default orientation
-                resetMazeOrientation();
             }
         });
-
-        function resetMazeOrientation() {
-            tiltRotationX = 0;
-            tiltRotationY = 0;
-            currentRotationX = 0;
-            currentRotationY = 0;
-            mazeElement.style.transform = `
-                rotateY(0deg) rotateX(0deg)
-            `;
-        }
 
         function startInteraction(event) {
             event.preventDefault(); // Prevent default browser behavior
@@ -906,11 +892,6 @@
 
                 // Highlight the exit border
                 highlightExitBorder();
-            }
-
-            // Reset maze orientation if device orientation is disabled
-            if (!deviceOrientationEnabled) {
-                resetMazeOrientation();
             }
         }
 
@@ -1527,17 +1508,6 @@
                 spread: 70,
                 origin: { y: 0.6 }
             });
-        }
-
-        // Reset Maze Orientation
-        function resetMazeOrientation() {
-            tiltRotationX = 0;
-            tiltRotationY = 0;
-            currentRotationX = 0;
-            currentRotationY = 0;
-            mazeElement.style.transform = `
-                rotateY(0deg) rotateX(0deg)
-            `;
         }
 
         // Handle Window Resize for Confetti Canvas
