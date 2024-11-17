@@ -117,8 +117,8 @@
             position: relative;
             background-color: var(--joystick-head-color);
             border-radius: 50%;
-            width: 20px; /* Increased from 15px to 20px */
-            height: 20px; /* Increased from 15px to 20px */
+            width: 15px; /* Reduced from 20px to 15px */
+            height: 15px; /* Reduced from 20px to 15px */
             cursor: grab;
             user-select: none; /* Prevent text selection */
 
@@ -228,7 +228,7 @@
             display: inline-block;
             width: 50px;
             height: 24px;
-            margin-right: 10px; /* Space between switch and label */
+            margin-right: 10px;
         }
 
         .switch input {
@@ -240,7 +240,7 @@
         .slider {
             position: absolute;
             cursor: pointer;
-            top: 0;
+            top: -2px;
             left: 0;
             right: 0;
             bottom: 0;
@@ -273,7 +273,7 @@
             transform: translateX(26px);
         }
 
-        /* Align slider switch and label */
+        /* Remove the phone icon for device orientation */
         .toggle-label {
             display: flex;
             align-items: center;
@@ -283,7 +283,7 @@
 
         /* Removed the ::before pseudo-element to eliminate the phone icon */
         /* .toggle-label::before {
-            content: "\1F4F1"; /* Unicode for mobile phone */
+            content: "\1F4F1"; / Unicode for mobile phone */
         /*     margin-right: 8px;
             font-size: 1.2em;
         } */
@@ -681,13 +681,6 @@
                     .then(() => {
                         showToast('Device orientation enabled.');
                         this.setAttribute('aria-checked', 'true');
-                        if (!gameInProgress) {
-                            // Start game if not already started
-                            gameInProgress = true;
-                            window.requestAnimationFrame(main);
-                            noteElement.style.opacity = 0;
-                            stopJoystickGlow();
-                        }
                     })
                     .catch((error) => {
                         console.error(error);
@@ -708,13 +701,6 @@
                 mazeElement.style.transform = `
                     rotateY(0deg) rotateX(0deg)
                 `;
-
-                // Stop the game if it was running via device orientation
-                if (gameInProgress) {
-                    gameInProgress = false;
-                    showToast('Game paused.');
-                    startJoystickGlow();
-                }
             }
         });
 
@@ -742,7 +728,13 @@
                 gameInProgress = true;
                 window.requestAnimationFrame(main);
                 noteElement.style.opacity = 0;
-                stopJoystickGlow();
+
+                // Removed automatic device orientation request
+                /*
+                if (!deviceOrientationEnabled) {
+                    requestDeviceOrientation();
+                }
+                */
             }
         }
 
@@ -833,7 +825,6 @@
                 cursor: grab;
                 position: relative;
             `;
-            startJoystickGlow();
 
             // Remove the automatic display of the instruction modal
             // instructionModal.style.display = "block";
@@ -1448,7 +1439,6 @@
                         showToast(`🎉 Congrats, the ball is free! 🎉`);
                         gameInProgress = false;
                         triggerConfetti();
-                        startJoystickGlow();
                     }
                 });
 
@@ -1533,18 +1523,6 @@
             confettiCanvas.width = window.innerWidth;
             confettiCanvas.height = window.innerHeight;
         });
-
-        // Function to stop the breathing (glow) animation on joystick head
-        function stopJoystickGlow() {
-            joystickHeadElement.style.animation = 'none';
-        }
-
-        // Function to start the breathing (glow) animation on joystick head
-        function startJoystickGlow() {
-            joystickHeadElement.style.animation = `
-                glow 0.6s infinite alternate ease-in-out
-            `;
-        }
     </script>
 </body>
 </html>
