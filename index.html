@@ -509,8 +509,8 @@
         let currentRotationX = 0;
         let currentRotationY = 0;
 
-        const gravity = 5;
-        const friction = 0.005; // Coefficients of friction
+        const gravity = 2;
+        const friction = 0.01; // Coefficients of friction
 
         const debugMode = false;
 
@@ -1173,7 +1173,7 @@
                 return;
             }
 
-            const maxVelocity = 5;
+            const maxVelocity = 3;
 
             // Time passed since last cycle divided by 16
             // This function gets called every ~16 ms on average so dividing by 16 will result in ~1
