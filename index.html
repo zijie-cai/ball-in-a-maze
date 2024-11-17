@@ -86,8 +86,6 @@
             transition: border 0.3s ease; /* Smooth transition for border color changes */
         }
 
-        /* Removed #end styles */
-
         #controls {
             display: flex;
             flex-direction: column;
@@ -207,6 +205,20 @@
             max-width: 400px;
             border-radius: 10px;
             text-align: center;
+        }
+
+        .modal-content label {
+            display: block;
+            margin-top: 15px;
+            font-size: 1em;
+            color: var(--text-color);
+            cursor: pointer;
+        }
+
+        .modal-content input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+            cursor: pointer;
         }
 
         .close-button {
@@ -367,6 +379,11 @@
             <h2>How to Play</h2>
             <p>Tilt the maze using the joystick or your mobile device!</p>
             <p>Guide the ball to the exit.</p>
+            <!-- Device Orientation Toggle -->
+            <label for="orientation-toggle">
+                <input type="checkbox" id="orientation-toggle">
+                Enable Device Orientation
+            </label>
         </div>
     </div>
 
@@ -395,6 +412,9 @@
         const closeInstructionButton = document.getElementById("close-instruction");
         const toast = document.getElementById("toast");
         const instructionButton = document.getElementById("instruction-button"); // New
+
+        // Orientation Toggle Element
+        const orientationToggle = document.getElementById("orientation-toggle");
 
         // Initialize Canvas for Confetti
         const confettiCtx = confettiCanvas.getContext('2d');
@@ -436,6 +456,9 @@
         let tiltRotationY = 0;
         let deviceOrientationSupported = false;
         let deviceOrientationEnabled = false;
+
+        // Detect if device is mobile
+        const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 
         // Initialize the game
         resetGame(true);
@@ -567,6 +590,35 @@
             setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
         }
 
+        // Device Orientation Toggle Handling
+        if (!isMobile) {
+            // Hide the orientation toggle if not on a mobile device
+            orientationToggle.parentElement.style.display = 'none';
+        } else {
+            // By default, device orientation is disabled
+            orientationToggle.checked = false;
+        }
+
+        orientationToggle.addEventListener("change", function() {
+            if (this.checked) {
+                // Enable device orientation
+                requestDeviceOrientation()
+                    .then(() => {
+                        showToast('Device orientation enabled.');
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                        showToast('Failed to enable device orientation.');
+                        this.checked = false; // Revert checkbox if failed
+                    });
+            } else {
+                // Disable device orientation
+                window.removeEventListener('deviceorientation', handleOrientation, true);
+                deviceOrientationEnabled = false;
+                showToast('Device orientation disabled.');
+            }
+        });
+
         function startInteraction(event) {
             event.preventDefault(); // Prevent default browser behavior
             isMouseDown = true;
@@ -592,10 +644,12 @@
                 window.requestAnimationFrame(main);
                 noteElement.style.opacity = 0;
 
-                // Request device orientation permission if not already enabled
+                // Removed automatic device orientation request
+                /*
                 if (!deviceOrientationEnabled) {
                     requestDeviceOrientation();
                 }
+                */
             }
         }
 
@@ -991,7 +1045,7 @@
 
         // Handle Device Orientation for Tilt Control
         function handleOrientation(event) {
-            if (!isMouseDown) {
+            if (!isMouseDown && deviceOrientationEnabled) {
                 // event.beta: front-back tilt [-180, 180]
                 // event.gamma: left-right tilt [-90, 90]
 
@@ -1111,11 +1165,13 @@
                                         // Ball hits the left cap of a horizontal wall
                                         const closest = closestItCanBe(wallStart, {
                                             x: ball.nextX,
-                                            y: ball.nextY
+                                            y: ball.nextY,
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
                                         });
                                         const rolled = rollAroundCap(wallStart, {
-                                            x: closest.x,
-                                            y: closest.y,
+                                            x: ball.nextX, // Corrected from closest.x
+                                            y: ball.nextY, // Corrected from closest.y
                                             velocityX: ball.velocityX,
                                             velocityY: ball.velocityY
                                         });
@@ -1140,11 +1196,13 @@
                                         // Ball hits the right cap of a horizontal wall
                                         const closest = closestItCanBe(wallEnd, {
                                             x: ball.nextX,
-                                            y: ball.nextY
+                                            y: ball.nextY,
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
                                         });
                                         const rolled = rollAroundCap(wallEnd, {
-                                            x: closest.x,
-                                            y: closest.y,
+                                            x: ball.nextX, // Corrected from closest.x
+                                            y: ball.nextY, // Corrected from closest.y
                                             velocityX: ball.velocityX,
                                             velocityY: ball.velocityY
                                         });
@@ -1203,11 +1261,13 @@
                                         // Ball hits the top cap of a vertical wall
                                         const closest = closestItCanBe(wallStart, {
                                             x: ball.nextX,
-                                            y: ball.nextY
+                                            y: ball.nextY,
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
                                         });
                                         const rolled = rollAroundCap(wallStart, {
-                                            x: closest.x,
-                                            y: closest.y,
+                                            x: ball.nextX, // Corrected from closest.x
+                                            y: ball.nextY, // Corrected from closest.y
                                             velocityX: ball.velocityX,
                                             velocityY: ball.velocityY
                                         });
@@ -1232,11 +1292,13 @@
                                         // Ball hits the bottom cap of a vertical wall
                                         const closest = closestItCanBe(wallEnd, {
                                             x: ball.nextX,
-                                            y: ball.nextY
+                                            y: ball.nextY,
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
                                         });
                                         const rolled = rollAroundCap(wallEnd, {
-                                            x: closest.x,
-                                            y: closest.y,
+                                            x: ball.nextX, // Corrected from closest.x
+                                            y: ball.nextY, // Corrected from closest.y
                                             velocityX: ball.velocityX,
                                             velocityY: ball.velocityY
                                         });
@@ -1309,27 +1371,36 @@
             }
         }
 
-        // Request Device Orientation Permissions Automatically on Game Start
+        // Request Device Orientation Permissions Automatically on Toggle
         function requestDeviceOrientation() {
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                // iOS 13+ devices require permission
-                DeviceOrientationEvent.requestPermission()
-                    .then(response => {
-                        if (response === 'granted') {
-                            window.addEventListener('deviceorientation', handleOrientation, true);
-                            deviceOrientationEnabled = true;
-                        } else {
-                            console.warn('Device orientation permission denied.');
-                        }
-                    })
-                    .catch(console.error);
-            } else if (window.DeviceOrientationEvent) {
-                // Non iOS 13+ devices
-                window.addEventListener('deviceorientation', handleOrientation, true);
-                deviceOrientationEnabled = true;
-            } else {
-                console.warn('Device orientation not supported.');
-            }
+            return new Promise((resolve, reject) => {
+                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    // iOS 13+ devices require permission
+                    DeviceOrientationEvent.requestPermission()
+                        .then(response => {
+                            if (response === 'granted') {
+                                window.addEventListener('deviceorientation', handleOrientation, true);
+                                deviceOrientationEnabled = true;
+                                resolve();
+                            } else {
+                                console.warn('Device orientation permission denied.');
+                                reject('Permission denied');
+                            }
+                        })
+                        .catch(error => {
+                            console.error(error);
+                            reject(error);
+                        });
+                } else if (window.DeviceOrientationEvent) {
+                    // Non iOS 13+ devices
+                    window.addEventListener('deviceorientation', handleOrientation, true);
+                    deviceOrientationEnabled = true;
+                    resolve();
+                } else {
+                    console.warn('Device orientation not supported.');
+                    reject('Not supported');
+                }
+            });
         }
 
         // Highlight the exit border to green
