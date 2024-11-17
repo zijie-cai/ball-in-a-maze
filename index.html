@@ -1140,14 +1140,14 @@
 
                 // Normalize the beta and gamma to [-1, 1]
                 // Considering a maximum tilt of 30 degrees for normalization
-                const maxTilt = 45;
+                const maxTilt = 30;
 
                 beta = Math.max(Math.min(beta, maxTilt), -maxTilt);
                 gamma = Math.max(Math.min(gamma, maxTilt), -maxTilt);
 
                 // Map the tilt to rotation degrees (max 12 degrees)
-                const rotationX = (beta / maxTilt) * 20;
-                const rotationY = (gamma / maxTilt) * 20;
+                const rotationX = (beta / maxTilt) * 12;
+                const rotationY = (gamma / maxTilt) * 12;
 
                 tiltRotationX = rotationX;
                 tiltRotationY = rotationY;
