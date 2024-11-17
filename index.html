@@ -273,7 +273,7 @@
             transform: translateX(26px);
         }
 
-        /* Add an icon for device orientation */
+        /* Remove the phone icon for device orientation */
         .toggle-label {
             display: flex;
             align-items: center;
@@ -281,11 +281,12 @@
             color: var(--text-color);
         }
 
-        .toggle-label::before {
-            content: "\1F4F1"; /* Unicode for mobile phone */
-            margin-right: 8px;
+        /* Removed the ::before pseudo-element to eliminate the phone icon */
+        /* .toggle-label::before {
+            content: "\1F4F1"; / Unicode for mobile phone */
+        /*     margin-right: 8px;
             font-size: 1.2em;
-        }
+        } */
 
         .modal-content label input[type="checkbox"] {
             display: none;
@@ -693,6 +694,13 @@
                 deviceOrientationEnabled = false;
                 showToast('Device orientation disabled.');
                 this.setAttribute('aria-checked', 'false');
+
+                // Reset maze to default orientation
+                currentRotationX = 0;
+                currentRotationY = 0;
+                mazeElement.style.transform = `
+                    rotateY(0deg) rotateX(0deg)
+                `;
             }
         });
 
