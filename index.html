@@ -1,110 +1,1550 @@
-function resetGame(generateNewMaze = false) {
-    previousTimestamp = undefined;
-    gameInProgress = false;
-    isMouseDown = false;
-    mouseStartX = undefined;
-    mouseStartY = undefined;
-    accelerationX = 0;
-    accelerationY = 0;
-    frictionX = 0;
-    frictionY = 0;
-    currentRotationX = 0;
-    currentRotationY = 0;
-    tiltRotationX = 0;
-    tiltRotationY = 0;
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Maze Game</title>
+    <!-- 1. Add Meta Viewport for Mobile Responsiveness -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 2. Include Canvas Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            --background-color: #ede6e3; 
+            --wall-color: #210124;
+            --joystick-color: #7d82b8; 
+            --joystick-head-color: #7d82b8;
+            --ball-color: #7d82b8; 
+            --text-color: #210124; 
 
-    mazeElement.style.transform = `
-        rotateY(0deg) rotateX(0deg)
-    `;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            height: 85vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none; /* Prevent text selection */
+            flex-direction: column;
+        }
 
-    // Reset all maze borders to grey
-    mazeElement.style.borderTop = '2px solid #ccc';
-    mazeElement.style.borderBottom = '2px solid #ccc';
-    mazeElement.style.borderLeft = '2px solid #ccc';
-    mazeElement.style.borderRight = '2px solid #ccc';
+        #game {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px; /* Reduced gap for less vertical space */
+            perspective: 600px;
+        }
 
-    joystickHeadElement.style.cssText = `
-        left: 0;
-        top: 0;
-        animation: glow 0.6s infinite alternate ease-in-out;
-        cursor: grab;
-        position: relative;
-    `;
-    startJoystickGlow(); // Ensure glow animation is active
+        #title {
+            font-size: 1.8em; /* Slightly smaller title */
+            color: var(--text-color);
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
 
-    // Remove the automatic display of the instruction modal
-    // instructionModal.style.display = "block";
+        /* Information Button Styles */
+        #instruction-button {
+            background-color: var(--joystick-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            font-size: 1.2em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s ease;
+            margin-top: 10px; /* Space below the title */
+        }
 
-    // Hide any existing toast
-    toast.className = "";
+        #instruction-button:hover {
+            background-color: #3e0b40;
+        }
 
-    // Clear existing messages
-    noteElement.innerHTML = ``;
-    noteElement.style.opacity = 0;
+        #instruction-button:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--joystick-color);
+        }
 
-    // Clear previous ball elements
-    if (ballElements.length) {
-        ballElements.forEach((ballElement) => {
-            mazeElement.removeChild(ballElement);
+        #maze {
+            position: relative;
+            width: 350px;
+            height: 315px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px; /* Reduced margin for spacing */
+            background-color: #f0f0f0;
+            border-top: 2px solid #ccc;
+            border-bottom: 2px solid #ccc;
+            border-left: 2px solid #ccc;
+            border-right: 2px solid #ccc;
+            border-radius: 10px;
+            box-sizing: border-box;
+            transition: border 0.3s ease; /* Smooth transition for border color changes */
+        }
+
+        #controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* New buttons container */
+        #buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        #joystick {
+            background: linear-gradient(135deg, #E0E0E0, #BDBDBD);
+            position: relative;
+            background-color: var(--joystick-color);
+            border-radius: 50%;
+            width: 50px; /* Reduced from 60px to 50px */
+            height: 50px; /* Reduced from 60px to 50px */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 10px; /* Reduced margin */
+            margin-bottom: -15px; /* Reduced margin */
+            touch-action: none; /* Prevent default touch actions */
+        }
+
+        #joystick-head {
+            position: relative;
+            background-color: var(--joystick-head-color);
+            border-radius: 50%;
+            width: 20px; /* Increased from 15px to 20px */
+            height: 20px; /* Increased from 15px to 20px */
+            cursor: grab;
+            user-select: none; /* Prevent text selection */
+
+            animation: glow 0.6s infinite alternate ease-in-out;
+            animation-delay: 4s;
+        }
+
+        @keyframes glow {
+            from {
+                transform: scale(1);
+            }
+            to {
+                transform: scale(1.2);
+            }
+        }
+
+        .joystick-arrow:nth-of-type(1) {
+            position: absolute;
+            bottom: 60px;
+
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+
+            border-bottom: 10px solid var(--joystick-color);
+        }
+
+        .joystick-arrow:nth-of-type(2) {
+            position: absolute;
+            top: 60px;
+
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+
+            border-top: 10px solid var(--joystick-color);
+        }
+
+        .joystick-arrow:nth-of-type(3) {
+            position: absolute;
+            left: 60px;
+
+            width: 0;
+            height: 0;
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+
+            border-left: 10px solid var(--joystick-color);
+        }
+
+        .joystick-arrow:nth-of-type(4) {
+            position: absolute;
+            right: 60px;
+
+            width: 0;
+            height: 0;
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+
+            border-right: 10px solid var(--joystick-color);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 10000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0, 0, 0, 0.5); /* Black w/ opacity */
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto; /* 10% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%; /* Could be more or less, depending on screen size */
+            max-width: 400px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .modal-content label {
+            display: block;
+            margin-top: 15px;
+            font-size: 1em;
+            color: var(--text-color);
+            cursor: pointer;
+        }
+
+        /* Updated Toggle Switch Styles */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+            margin-right: 10px; /* Space between switch and label */
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 24px;
+        }
+
+        .slider::before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--joystick-color);
+        }
+
+        input:focus + .slider {
+            box-shadow: 0 0 1px var(--joystick-color);
+        }
+
+        input:checked + .slider::before {
+            transform: translateX(26px);
+        }
+
+        /* Align slider switch and label */
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            font-size: 1em;
+            color: var(--text-color);
+        }
+
+        /* Removed the ::before pseudo-element to eliminate the phone icon */
+        /* .toggle-label::before {
+            content: "\1F4F1"; /* Unicode for mobile phone */
+        /*     margin-right: 8px;
+            font-size: 1.2em;
+        } */
+
+        .modal-content label input[type="checkbox"] {
+            display: none;
+        }
+
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+        }
+
+        /* Toast Styles */
+        #toast {
+            visibility: hidden; /* Hidden by default */
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 5px;
+            padding: 16px;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10001; /* Above the modal */
+            font-size: 1em;
+        }
+
+        #toast.show {
+            visibility: visible; /* Show the toast */
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+
+        @keyframes fadein {
+            from { top: 0; opacity: 0; }
+            to { top: 20px; opacity: 1; }
+        }
+
+        @keyframes fadeout {
+            from { top: 20px; opacity: 1; }
+            to { top: 0; opacity: 0; }
+        }
+
+        #note {
+            text-align: center;
+            font-size: 0.9em; /* Slightly smaller font */
+            color: var(--text-color);
+            transition: opacity 2s;
+            max-width: 250px; /* Reduced max-width */
+            margin-top: 5px; /* Reduced margin */
+            min-height: 50px; /* Reduced height */
+            display: flex; /* For vertical alignment */
+            flex-direction: column;
+            justify-content: center; /* Center content vertically */
+        }
+
+        button {
+            padding: 8px 16px; /* Slightly reduced padding */
+            font-size: 0.9em; /* Slightly smaller font */
+            background-color: var(--joystick-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #3e0b40;
+        }
+
+        a:visited {
+            color: inherit;
+        }
+
+        .ball {
+            position: absolute;
+            margin-top: -5px;
+            margin-left: -5px;
+            border-radius: 50%;
+            background-color: var(--ball-color);
+            width: 10px;
+            height: 10px;
+        }
+
+        .wall {
+            position: absolute;
+            background-color: var(--wall-color);
+            transform-origin: top center;
+            margin-left: -5px;
+        }
+
+        .wall::before,
+        .wall::after {
+            display: block;
+            content: "";
+            width: 10px;
+            height: 10px;
+            background-color: inherit;
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        .wall::before {
+            top: -5px;
+        }
+
+        .wall::after {
+            bottom: -5px;
+        }
+
+        /* Confetti Canvas */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Allow clicks through the canvas */
+            z-index: 9999; /* Ensure it's on top */
+        }
+    </style>
+</head>
+<body>
+    <div id="game">
+        <div id="title">Ball in a Maze</div>
+        <!-- Information Button -->
+        <button id="instruction-button" class="info-button" aria-label="Open Instructions">i</button>
+        <div id="maze">
+            <!-- Maze elements will be dynamically generated -->
+        </div>
+        <div id="controls">
+            <div id="joystick">
+                <div class="joystick-arrow"></div>
+                <div class="joystick-arrow"></div>
+                <div class="joystick-arrow"></div>
+                <div class="joystick-arrow"></div>
+                <div id="joystick-head"></div>
+            </div>
+            <div id="note">
+                <!-- Initially empty; messages handled via toast and modal -->
+            </div>
+            <div id="buttons">
+                <button id="reset-button">Reset Game</button>
+                <button id="new-maze-button">New Maze</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Instruction Modal -->
+    <div id="instruction-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-instruction">&times;</span>
+            <h2>How to Play</h2>
+            <p>Tilt the maze using the joystick or your mobile device!</p>
+            <p>Guide the ball to the exit.</p>
+            <!-- Device Orientation Toggle -->
+            <div class="toggle-container">
+                <label class="switch" aria-label="Enable Device Orientation">
+                    <input type="checkbox" id="orientation-toggle" aria-checked="false">
+                    <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">Enable Device Orientation</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast"></div>
+
+    <!-- Confetti Canvas -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <script>
+        // Define constants for maze dimensions
+        const mazeColumns = 10;
+        const mazeRows = 9;
+        const pathW = 25; // Path width
+        const wallW = 10; // Wall width
+        const ballSize = 10; // Width and height of the ball
+
+        // Game Elements
+        const mazeElement = document.getElementById("maze");
+        const joystickHeadElement = document.getElementById("joystick-head");
+        const noteElement = document.getElementById("note"); // Note element for instructions and game won, game failed texts
+        const resetButton = document.getElementById("reset-button");
+        const newMazeButton = document.getElementById("new-maze-button");
+        const confettiCanvas = document.getElementById('confetti-canvas');
+        const instructionModal = document.getElementById("instruction-modal");
+        const closeInstructionButton = document.getElementById("close-instruction");
+        const toast = document.getElementById("toast");
+        const instructionButton = document.getElementById("instruction-button"); // New
+
+        // Orientation Toggle Element
+        const orientationToggle = document.getElementById("orientation-toggle");
+
+        // Initialize Canvas for Confetti
+        const confettiCtx = confettiCanvas.getContext('2d');
+        confettiCanvas.width = window.innerWidth;
+        confettiCanvas.height = window.innerHeight;
+
+        // Variables
+        let previousTimestamp;
+        let gameInProgress = false;
+        let isMouseDown = false;
+        let mouseStartX;
+        let mouseStartY;
+        let accelerationX = 0;
+        let accelerationY = 0;
+        let frictionX = 0;
+        let frictionY = 0;
+        let currentRotationX = 0;
+        let currentRotationY = 0;
+
+        const gravity = 2;
+        const friction = 0.01; // Coefficients of friction
+
+        const debugMode = false;
+
+        let balls = [];
+        let ballElements = [];
+        let walls = [];
+        let wallElements = [];
+
+        // Variables for exit detection
+        let exitSide;
+        let exitCell;
+
+        // Maze grid
+        let grid = [];
+
+        // Variables for Tilt Control
+        let tiltRotationX = 0;
+        let tiltRotationY = 0;
+        let deviceOrientationSupported = false;
+        let deviceOrientationEnabled = false;
+
+        // Detect if device is mobile
+        const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
+        // Initialize the game
+        resetGame(true);
+
+        // Utility Functions
+        Math.minmax = (value, limit) => {
+            return Math.max(Math.min(value, limit), -limit);
+        };
+
+        const distance2D = (p1, p2) => {
+            return Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
+        };
+
+        // Angle between the two points
+        const getAngle = (p1, p2) => {
+            let angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+            return angle;
+        };
+
+        // The closest a ball and a wall cap can be
+        const closestItCanBe = (cap, ball) => {
+            let angle = getAngle(cap, ball);
+
+            const deltaX = Math.cos(angle) * (wallW / 2 + ballSize / 2);
+            const deltaY = Math.sin(angle) * (wallW / 2 + ballSize / 2);
+
+            return { x: cap.x + deltaX, y: cap.y + deltaY };
+        };
+
+        // Roll the ball around the wall cap
+        const rollAroundCap = (cap, ball) => {
+            // The direction the ball can't move any further because the wall holds it back
+            let impactAngle = getAngle(ball, cap);
+
+            // The direction the ball wants to move based on its velocity
+            let heading = getAngle(
+                { x: 0, y: 0 },
+                { x: ball.velocityX, y: ball.velocityY }
+            );
+
+            // The angle between the impact direction and the ball's desired direction
+            let impactHeadingAngle = impactAngle - heading;
+
+            // Velocity distance if not hit would have occurred
+            const velocityMagnitude = distance2D(
+                { x: 0, y: 0 },
+                { x: ball.velocityX, y: ball.velocityY }
+            );
+            // Velocity component diagonal to the impact
+            const velocityMagnitudeDiagonalToTheImpact =
+                Math.sin(impactHeadingAngle) * velocityMagnitude;
+
+            // How far should the ball be from the wall cap
+            const closestDistance = wallW / 2 + ballSize / 2;
+
+            const rotationAngle = Math.atan2(
+                velocityMagnitudeDiagonalToTheImpact,
+                closestDistance
+            );
+
+            const deltaFromCap = {
+                x: Math.cos(impactAngle + Math.PI - rotationAngle) * closestDistance,
+                y: Math.sin(impactAngle + Math.PI - rotationAngle) * closestDistance
+            };
+
+            const x = cap.x + deltaFromCap.x;
+            const y = cap.y + deltaFromCap.y;
+            const velocityX = ball.velocityX;
+            const velocityY = ball.velocityY;
+            const nextX = x + velocityX;
+            const nextY = y + velocityY;
+
+            return { x, y, velocityX, velocityY, nextX, nextY };
+        };
+
+        // Decreases the absolute value of a number but keeps its sign, doesn't go below abs 0
+        const slow = (number, difference) => {
+            if (Math.abs(number) <= difference) return 0;
+            if (number > difference) return number - difference;
+            return number + difference;
+        };
+
+        // Joystick Event Listeners
+        joystickHeadElement.addEventListener("mousedown", startInteraction);
+        joystickHeadElement.addEventListener("touchstart", startInteraction, { passive: false });
+
+        window.addEventListener("mouseup", endInteraction);
+        window.addEventListener("touchend", endInteraction);
+
+        window.addEventListener("mousemove", moveInteraction);
+        window.addEventListener("touchmove", moveInteraction, { passive: false });
+
+        // Prevent joystick from being dragged without holding down the mouse button or touch
+        joystickHeadElement.addEventListener("click", function (event) {
+            event.preventDefault();
         });
-        ballElements = [];
-    }
 
-    // Clear previous wall elements
-    if (wallElements.length) {
-        wallElements.forEach((wallElement) => {
-            mazeElement.removeChild(wallElement);
+        // Add event listener for reset button
+        resetButton.addEventListener("click", function () {
+            resetGame();
         });
-        wallElements = [];
-    }
 
-    // Fixed starting position
-    const ballStart = { column: mazeColumns-1, row: mazeRows-1};
+        // Add event listener for new maze button
+        newMazeButton.addEventListener("click", function () {
+            resetGame(true);
+        });
 
-    // Fixed exit side and exit cell (Bottom-Left Corner)
-    exitSide = 'left';
-    exitCell = { column: 0, row: Math.floor(mazeRows / 2) };
+        // Add event listener for instruction button
+        instructionButton.addEventListener("click", function() {
+            instructionModal.style.display = "block";
+        });
 
-    const ballStartX = ballStart.column * (wallW + pathW) + (wallW / 2 + pathW / 2);
-    const ballStartY = ballStart.row * (wallW + pathW) + (wallW / 2 + pathW / 2);
+        // Instruction Modal Event Listeners
+        closeInstructionButton.onclick = function() {
+            instructionModal.style.display = "none";
+        };
 
-    balls = [{
-        x: ballStartX,
-        y: ballStartY,
-        velocityX: 0,
-        velocityY: 0
-    }];
+        // Close the modal if the user clicks outside of the modal content
+        window.onclick = function(event) {
+            if (event.target == instructionModal) {
+                instructionModal.style.display = "none";
+            }
+        };
 
-    // Draw the ball
-    balls.forEach(({ x, y }) => {
-        const ball = document.createElement("div");
-        ball.setAttribute("class", "ball");
-        ball.style.cssText = `left: ${x}px; top: ${y}px; `;
+        // Function to Show Toast
+        function showToast(message) {
+            toast.innerHTML = message;
+            toast.className = "show";
+            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+        }
 
-        mazeElement.appendChild(ball);
-        ballElements.push(ball);
-    });
+        // Device Orientation Toggle Handling
+        if (!isMobile) {
+            // Hide the orientation toggle if not on a mobile device
+            orientationToggle.parentElement.style.display = 'none';
+            document.querySelector('.toggle-label').style.display = 'none';
+        } else {
+            // By default, device orientation is disabled
+            orientationToggle.checked = false;
+        }
 
-    if (generateNewMaze) {
-        generateMaze();
-    } else {
-        // Draw walls
-        walls.forEach(({ x, y, horizontal, length }) => {
-            const wall = document.createElement("div");
-            wall.setAttribute("class", "wall");
-            wall.style.cssText = `
-                left: ${x}px;
-                top: ${y}px;
-                width: ${wallW}px;
-                height: ${length}px;
-                transform: rotate(${horizontal ? -90 : 0}deg);
+        orientationToggle.addEventListener("change", function() {
+            if (this.checked) {
+                // Enable device orientation
+                requestDeviceOrientation()
+                    .then(() => {
+                        showToast('Device orientation enabled.');
+                        this.setAttribute('aria-checked', 'true');
+                        if (!gameInProgress) {
+                            // Start game if not already started
+                            gameInProgress = true;
+                            window.requestAnimationFrame(main);
+                            noteElement.style.opacity = 0;
+                            stopJoystickGlow();
+                        }
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                        showToast('Failed to enable device orientation.');
+                        this.checked = false; // Revert checkbox if failed
+                        this.setAttribute('aria-checked', 'false');
+                    });
+            } else {
+                // Disable device orientation
+                window.removeEventListener('deviceorientation', handleOrientation, true);
+                deviceOrientationEnabled = false;
+                showToast('Device orientation disabled.');
+                this.setAttribute('aria-checked', 'false');
+
+                // Reset maze to default orientation
+                currentRotationX = 0;
+                currentRotationY = 0;
+                mazeElement.style.transform = `
+                    rotateY(0deg) rotateX(0deg)
+                `;
+
+                // Stop the game if it was running via device orientation
+                if (gameInProgress) {
+                    gameInProgress = false;
+                    showToast('Game paused.');
+                    startJoystickGlow();
+                }
+            }
+        });
+
+        function startInteraction(event) {
+            event.preventDefault(); // Prevent default browser behavior
+            isMouseDown = true;
+
+            if (event.type === "mousedown") {
+                mouseStartX = event.clientX;
+                mouseStartY = event.clientY;
+            } else if (event.type === "touchstart") {
+                const touch = event.touches[0];
+                mouseStartX = touch.clientX;
+                mouseStartY = touch.clientY;
+            }
+
+            joystickHeadElement.style.cssText = `
+                animation: none;
+                cursor: grabbing;
+                position: relative;
+                left: 0px;
+                top: 0px;
+            `;
+            if (!gameInProgress) {
+                gameInProgress = true;
+                window.requestAnimationFrame(main);
+                noteElement.style.opacity = 0;
+                stopJoystickGlow();
+            }
+        }
+
+        function endInteraction(event) {
+            if (isMouseDown) {
+                isMouseDown = false;
+                joystickHeadElement.style.cssText = `
+                    left: 0;
+                    top: 0;
+                    animation: glow 0.6s infinite alternate ease-in-out;
+                    cursor: grab;
+                    position: relative;
+                `;
+                // Reset rotation to tiltRotation if available
+                currentRotationX = tiltRotationX;
+                currentRotationY = tiltRotationY;
+                mazeElement.style.transform = `
+                    rotateY(${currentRotationY}deg) rotateX(${-currentRotationX}deg)
+                `;
+            }
+        }
+
+        function moveInteraction(event) {
+            if (isMouseDown) {
+                event.preventDefault(); // Prevent scrolling on touch devices
+
+                let clientX, clientY;
+
+                if (event.type === "mousemove") {
+                    clientX = event.clientX;
+                    clientY = event.clientY;
+                } else if (event.type === "touchmove") {
+                    clientX = event.touches[0].clientX;
+                    clientY = event.touches[0].clientY;
+                }
+
+                const mouseDeltaX = -Math.minmax(mouseStartX - clientX, 40);
+                const mouseDeltaY = -Math.minmax(mouseStartY - clientY, 40);
+
+                joystickHeadElement.style.cssText = `
+                    left: ${mouseDeltaX}px;
+                    top: ${mouseDeltaY}px;
+                    animation: none;
+                    cursor: grabbing;
+                `;
+
+                const rotationY = mouseDeltaX * 0.3; // Max rotation ~12
+                const rotationX = mouseDeltaY * 0.3;
+
+                currentRotationX = rotationX;
+                currentRotationY = rotationY;
+
+                mazeElement.style.transform = `
+                    rotateY(${currentRotationY}deg) rotateX(${-currentRotationX}deg)
+                `;
+            }
+        }
+
+        function resetGame(generateNewMaze = false) {
+            previousTimestamp = undefined;
+            gameInProgress = false;
+            isMouseDown = false;
+            mouseStartX = undefined;
+            mouseStartY = undefined;
+            accelerationX = 0;
+            accelerationY = 0;
+            frictionX = 0;
+            frictionY = 0;
+            currentRotationX = 0;
+            currentRotationY = 0;
+            tiltRotationX = 0;
+            tiltRotationY = 0;
+
+            mazeElement.style.transform = `
+                rotateY(0deg) rotateX(0deg)
             `;
 
-            mazeElement.appendChild(wall);
-            wallElements.push(wall);
+            // Reset all maze borders to grey
+            mazeElement.style.borderTop = '2px solid #ccc';
+            mazeElement.style.borderBottom = '2px solid #ccc';
+            mazeElement.style.borderLeft = '2px solid #ccc';
+            mazeElement.style.borderRight = '2px solid #ccc';
+
+            joystickHeadElement.style.cssText = `
+                left: 0;
+                top: 0;
+                animation: glow 0.6s infinite alternate ease-in-out;
+                cursor: grab;
+                position: relative;
+            `;
+            startJoystickGlow();
+
+            // Remove the automatic display of the instruction modal
+            // instructionModal.style.display = "block";
+
+            // Hide any existing toast
+            toast.className = "";
+
+            // Clear existing messages
+            noteElement.innerHTML = ``;
+            noteElement.style.opacity = 0;
+
+            // Clear previous ball elements
+            if (ballElements.length) {
+                ballElements.forEach((ballElement) => {
+                    mazeElement.removeChild(ballElement);
+                });
+                ballElements = [];
+            }
+
+            // Clear previous wall elements
+            if (wallElements.length) {
+                wallElements.forEach((wallElement) => {
+                    mazeElement.removeChild(wallElement);
+                });
+                wallElements = [];
+            }
+
+            // Fixed starting position
+            const ballStart = { column: mazeColumns-1, row: mazeRows-1};
+
+            // Fixed exit side and exit cell (Bottom-Left Corner)
+            exitSide = 'left';
+            exitCell = { column: 0, row: Math.floor(mazeRows / 2) };
+
+            const ballStartX = ballStart.column * (wallW + pathW) + (wallW / 2 + pathW / 2);
+            const ballStartY = ballStart.row * (wallW + pathW) + (wallW / 2 + pathW / 2);
+
+            balls = [{
+                x: ballStartX,
+                y: ballStartY,
+                velocityX: 0,
+                velocityY: 0
+            }];
+
+            // Draw the ball
+            balls.forEach(({ x, y }) => {
+                const ball = document.createElement("div");
+                ball.setAttribute("class", "ball");
+                ball.style.cssText = `left: ${x}px; top: ${y}px; `;
+
+                mazeElement.appendChild(ball);
+                ballElements.push(ball);
+            });
+
+            if (generateNewMaze) {
+                generateMaze();
+            } else {
+                // Draw walls
+                walls.forEach(({ x, y, horizontal, length }) => {
+                    const wall = document.createElement("div");
+                    wall.setAttribute("class", "wall");
+                    wall.style.cssText = `
+                        left: ${x}px;
+                        top: ${y}px;
+                        width: ${wallW}px;
+                        height: ${length}px;
+                        transform: rotate(${horizontal ? -90 : 0}deg);
+                    `;
+
+                    mazeElement.appendChild(wall);
+                    wallElements.push(wall);
+                });
+
+                // Highlight the exit border
+                highlightExitBorder();
+            }
+        }
+
+        function generateMaze() {
+            // Initialize grid
+            grid = [];
+            for (let y = 0; y < mazeRows; y++) {
+                const row = [];
+                for (let x = 0; x < mazeColumns; x++) {
+                    row.push({
+                        x: x,
+                        y: y,
+                        walls: { top: true, right: true, bottom: true, left: true },
+                        visited: false
+                    });
+                }
+                grid.push(row);
+            }
+
+            const stack = [];
+
+            // Start at fixed cell (top-left corner)
+            const startX = 0;
+            const startY = 0;
+
+            const startCell = grid[startY][startX];
+            startCell.visited = true;
+
+            stack.push(startCell);
+
+            while (stack.length > 0) {
+                const currentCell = stack.pop();
+
+                // Get unvisited neighbors
+                const neighbors = getUnvisitedNeighbors(currentCell);
+
+                if (neighbors.length > 0) {
+                    // Push current cell back to the stack
+                    stack.push(currentCell);
+
+                    // Choose a random unvisited neighbor
+                    const randomIndex = Math.floor(Math.random() * neighbors.length);
+                    const nextCell = neighbors[randomIndex];
+
+                    // Remove wall between currentCell and nextCell
+                    removeWalls(currentCell, nextCell);
+
+                    // Mark nextCell as visited
+                    nextCell.visited = true;
+
+                    // Push nextCell to the stack
+                    stack.push(nextCell);
+                }
+            }
+
+            // Convert grid to walls array
+            walls = [];
+
+            // Add outer walls with opening
+            // Top wall
+            for (let x = 0; x < mazeColumns; x++) {
+                if (!(exitSide === 'top' && exitCell.column === x)) {
+                    walls.push({
+                        column: x,
+                        row: 0,
+                        horizontal: true,
+                        length: 1
+                    });
+                }
+            }
+
+            // Bottom wall
+            for (let x = 0; x < mazeColumns; x++) {
+                if (!(exitSide === 'bottom' && exitCell.column === x)) {
+                    walls.push({
+                        column: x,
+                        row: mazeRows,
+                        horizontal: true,
+                        length: 1
+                    });
+                }
+            }
+
+            // Left wall
+            for (let y = 0; y < mazeRows; y++) {
+                if (!(exitSide === 'left' && exitCell.row === y)) {
+                    walls.push({
+                        column: 0,
+                        row: y,
+                        horizontal: false,
+                        length: 1
+                    });
+                }
+            }
+
+            // Right wall
+            for (let y = 0; y < mazeRows; y++) {
+                if (!(exitSide === 'right' && exitCell.row === y)) {
+                    walls.push({
+                        column: mazeColumns,
+                        row: y,
+                        horizontal: false,
+                        length: 1
+                    });
+                }
+            }
+
+            // Go through grid and add walls
+            for (let y = 0; y < mazeRows; y++) {
+                for (let x = 0; x < mazeColumns; x++) {
+                    const cell = grid[y][x];
+
+                    // If there is a wall on the right
+                    if (cell.walls.right) {
+                        // Add vertical wall at (x + 1, y), length 1
+                        walls.push({
+                            column: x + 1,
+                            row: y,
+                            horizontal: false,
+                            length: 1
+                        });
+                    }
+
+                    // If there is a wall at the bottom
+                    if (cell.walls.bottom) {
+                        // Add horizontal wall at (x, y + 1), length 1
+                        walls.push({
+                            column: x,
+                            row: y + 1,
+                            horizontal: true,
+                            length: 1
+                        });
+                    }
+                }
+            }
+
+            // Convert walls to x, y, length
+            walls = walls.map((wall) => ({
+                x: wall.column * (wallW + pathW),
+                y: wall.row * (wallW + pathW),
+                horizontal: wall.horizontal,
+                length: wall.length * (wallW + pathW)
+            }));
+
+            // Draw walls
+            walls.forEach(({ x, y, horizontal, length }) => {
+                const wall = document.createElement("div");
+                wall.setAttribute("class", "wall");
+                wall.style.cssText = `
+                    left: ${x}px;
+                    top: ${y}px;
+                    width: ${wallW}px;
+                    height: ${length}px;
+                    transform: rotate(${horizontal ? -90 : 0}deg);
+                `;
+
+                mazeElement.appendChild(wall);
+                wallElements.push(wall);
+            });
+
+            // Highlight the exit border
+            highlightExitBorder();
+        }
+
+        function getUnvisitedNeighbors(cell) {
+            const neighbors = [];
+
+            const x = cell.x;
+            const y = cell.y;
+
+            // top neighbor
+            if (y > 0) {
+                const topNeighbor = grid[y - 1][x];
+                if (!topNeighbor.visited) {
+                    neighbors.push(topNeighbor);
+                }
+            }
+
+            // right neighbor
+            if (x < mazeColumns - 1) {
+                const rightNeighbor = grid[y][x + 1];
+                if (!rightNeighbor.visited) {
+                    neighbors.push(rightNeighbor);
+                }
+            }
+
+            // bottom neighbor
+            if (y < mazeRows - 1) {
+                const bottomNeighbor = grid[y + 1][x];
+                if (!bottomNeighbor.visited) {
+                    neighbors.push(bottomNeighbor);
+                }
+            }
+
+            // left neighbor
+            if (x > 0) {
+                const leftNeighbor = grid[y][x - 1];
+                if (!leftNeighbor.visited) {
+                    neighbors.push(leftNeighbor);
+                }
+            }
+
+            return neighbors;
+        }
+
+        function removeWalls(cell1, cell2) {
+            const x = cell1.x - cell2.x;
+            const y = cell1.y - cell2.y;
+
+            if (x === 1) {
+                // cell2 is to the left of cell1
+                cell1.walls.left = false;
+                cell2.walls.right = false;
+            } else if (x === -1) {
+                // cell2 is to the right of cell1
+                cell1.walls.right = false;
+                cell2.walls.left = false;
+            } else if (y === 1) {
+                // cell2 is above cell1
+                cell1.walls.top = false;
+                cell2.walls.bottom = false;
+            } else if (y === -1) {
+                // cell2 is below cell1
+                cell1.walls.bottom = false;
+                cell2.walls.top = false;
+            }
+        }
+
+        // Handle Device Orientation for Tilt Control
+        function handleOrientation(event) {
+            if (!isMouseDown && deviceOrientationEnabled) {
+                // event.beta: front-back tilt [-180, 180]
+                // event.gamma: left-right tilt [-90, 90]
+
+                let beta = event.beta;   // X axis
+                let gamma = event.gamma; // Y axis
+
+                // Normalize the beta and gamma to [-1, 1]
+                // Considering a maximum tilt of 30 degrees for normalization
+                const maxTilt = 30;
+
+                beta = Math.max(Math.min(beta, maxTilt), -maxTilt);
+                gamma = Math.max(Math.min(gamma, maxTilt), -maxTilt);
+
+                // Map the tilt to rotation degrees (max 12 degrees)
+                const rotationX = (beta / maxTilt) * 12;
+                const rotationY = (gamma / maxTilt) * 12;
+
+                tiltRotationX = rotationX;
+                tiltRotationY = rotationY;
+
+                currentRotationX = tiltRotationX;
+                currentRotationY = tiltRotationY;
+
+                mazeElement.style.transform = `
+                    rotateY(${currentRotationY}deg) rotateX(${-currentRotationX}deg)
+                `;
+            }
+        }
+
+        // Main game loop
+        function main(timestamp) {
+            // It is possible to reset the game mid-game. This case the loop should stop
+            if (!gameInProgress) return;
+
+            if (previousTimestamp === undefined) {
+                previousTimestamp = timestamp;
+                window.requestAnimationFrame(main);
+                return;
+            }
+
+            const maxVelocity = 1.5;
+
+            // Time passed since last cycle divided by 16
+            // This function gets called every ~16 ms on average so dividing by 16 will result in ~1
+            const timeElapsed = (timestamp - previousTimestamp) / 16;
+
+            try {
+                // Calculate acceleration and friction based on current rotation
+                accelerationX = gravity * Math.sin((currentRotationY / 180) * Math.PI);
+                accelerationY = gravity * Math.sin((currentRotationX / 180) * Math.PI);
+                frictionX = gravity * Math.cos((currentRotationY / 180) * Math.PI) * friction;
+                frictionY = gravity * Math.cos((currentRotationX / 180) * Math.PI) * friction;
+
+                const velocityChangeX = accelerationX * timeElapsed;
+                const velocityChangeY = accelerationY * timeElapsed;
+                const frictionDeltaX = frictionX * timeElapsed;
+                const frictionDeltaY = frictionY * timeElapsed;
+
+                balls.forEach((ball) => {
+                    if (accelerationX === 0) {
+                        // No acceleration
+                        ball.velocityX = slow(ball.velocityX, frictionDeltaX);
+                    } else {
+                        ball.velocityX += velocityChangeX;
+                        ball.velocityX -= Math.sign(accelerationX) * frictionDeltaX;
+                        ball.velocityX = Math.minmax(ball.velocityX, maxVelocity);
+                    }
+
+                    if (accelerationY === 0) {
+                        // No acceleration
+                        ball.velocityY = slow(ball.velocityY, frictionDeltaY);
+                    } else {
+                        ball.velocityY += velocityChangeY;
+                        ball.velocityY -= Math.sign(accelerationY) * frictionDeltaY;
+                        ball.velocityY = Math.minmax(ball.velocityY, maxVelocity);
+                    }
+
+                    // Preliminary next ball position, only becomes true if no hit occurs
+                    // Used only for hit testing, does not mean that the ball will reach this position
+                    ball.nextX = ball.x + ball.velocityX;
+                    ball.nextY = ball.y + ball.velocityY;
+
+                    if (debugMode) console.log("tick", ball);
+
+                    walls.forEach((wall, wi) => {
+                        if (wall.horizontal) {
+                            // Horizontal wall
+                            if (
+                                ball.nextY + ballSize / 2 >= wall.y - wallW / 2 &&
+                                ball.nextY - ballSize / 2 <= wall.y + wallW / 2
+                            ) {
+                                // Ball got within the strip of the wall
+                                // (not necessarily hit it, could be before or after)
+
+                                const wallStart = {
+                                    x: wall.x,
+                                    y: wall.y
+                                };
+                                const wallEnd = {
+                                    x: wall.x + wall.length,
+                                    y: wall.y
+                                };
+
+                                if (
+                                    ball.nextX + ballSize / 2 >= wallStart.x - wallW / 2 &&
+                                    ball.nextX < wallStart.x
+                                ) {
+                                    // Ball might hit the left cap of a horizontal wall
+                                    const distance = distance2D(wallStart, {
+                                        x: ball.nextX,
+                                        y: ball.nextY
+                                    });
+                                    if (distance < ballSize / 2 + wallW / 2) {
+                                        if (debugMode && wi > 4)
+                                            console.warn("too close h head", distance, ball);
+
+                                        // Ball hits the left cap of a horizontal wall
+                                        const closest = closestItCanBe(wallStart, {
+                                            x: ball.nextX,
+                                            y: ball.nextY,
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
+                                        });
+                                        const rolled = rollAroundCap(wallStart, {
+                                            x: ball.nextX, // Corrected from closest.x
+                                            y: ball.nextY, // Corrected from closest.y
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
+                                        });
+
+                                        Object.assign(ball, rolled);
+                                    }
+                                }
+
+                                if (
+                                    ball.nextX - ballSize / 2 <= wallEnd.x + wallW / 2 &&
+                                    ball.nextX > wallEnd.x
+                                ) {
+                                    // Ball might hit the right cap of a horizontal wall
+                                    const distance = distance2D(wallEnd, {
+                                        x: ball.nextX,
+                                        y: ball.nextY
+                                    });
+                                    if (distance < ballSize / 2 + wallW / 2) {
+                                        if (debugMode && wi > 4)
+                                            console.warn("too close h tail", distance, ball);
+
+                                        // Ball hits the right cap of a horizontal wall
+                                        const closest = closestItCanBe(wallEnd, {
+                                            x: ball.nextX,
+                                            y: ball.nextY,
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
+                                        });
+                                        const rolled = rollAroundCap(wallEnd, {
+                                            x: ball.nextX, // Corrected from closest.x
+                                            y: ball.nextY, // Corrected from closest.y
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
+                                        });
+
+                                        Object.assign(ball, rolled);
+                                    }
+                                }
+
+                                if (ball.nextX >= wallStart.x && ball.nextX <= wallEnd.x) {
+                                    // The ball got inside the main body of the wall
+                                    if (ball.nextY < wall.y) {
+                                        // Hit horizontal wall from top
+                                        ball.nextY = wall.y - wallW / 2 - ballSize / 2;
+                                    } else {
+                                        // Hit horizontal wall from bottom
+                                        ball.nextY = wall.y + wallW / 2 + ballSize / 2;
+                                    }
+                                    ball.y = ball.nextY;
+                                    ball.velocityY = -ball.velocityY / 3;
+
+                                    if (debugMode && wi > 4)
+                                        console.error("crossing h line, HIT", ball);
+                                }
+                            }
+                        } else {
+                            // Vertical wall
+                            if (
+                                ball.nextX + ballSize / 2 >= wall.x - wallW / 2 &&
+                                ball.nextX - ballSize / 2 <= wall.x + wallW / 2
+                            ) {
+                                // Ball got within the strip of the wall
+                                // (not necessarily hit it, could be before or after)
+
+                                const wallStart = {
+                                    x: wall.x,
+                                    y: wall.y
+                                };
+                                const wallEnd = {
+                                    x: wall.x,
+                                    y: wall.y + wall.length
+                                };
+
+                                if (
+                                    ball.nextY + ballSize / 2 >= wallStart.y - wallW / 2 &&
+                                    ball.nextY < wallStart.y
+                                ) {
+                                    // Ball might hit the top cap of a vertical wall
+                                    const distance = distance2D(wallStart, {
+                                        x: ball.nextX,
+                                        y: ball.nextY
+                                    });
+                                    if (distance < ballSize / 2 + wallW / 2) {
+                                        if (debugMode && wi > 4)
+                                            console.warn("too close v head", distance, ball);
+
+                                        // Ball hits the top cap of a vertical wall
+                                        const closest = closestItCanBe(wallStart, {
+                                            x: ball.nextX,
+                                            y: ball.nextY,
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
+                                        });
+                                        const rolled = rollAroundCap(wallStart, {
+                                            x: ball.nextX, // Corrected from closest.x
+                                            y: ball.nextY, // Corrected from closest.y
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
+                                        });
+
+                                        Object.assign(ball, rolled);
+                                    }
+                                }
+
+                                if (
+                                    ball.nextY - ballSize / 2 <= wallEnd.y + wallW / 2 &&
+                                    ball.nextY > wallEnd.y
+                                ) {
+                                    // Ball might hit the bottom cap of a vertical wall
+                                    const distance = distance2D(wallEnd, {
+                                        x: ball.nextX,
+                                        y: ball.nextY
+                                    });
+                                    if (distance < ballSize / 2 + wallW / 2) {
+                                        if (debugMode && wi > 4)
+                                            console.warn("too close v tail", distance, ball);
+
+                                        // Ball hits the bottom cap of a vertical wall
+                                        const closest = closestItCanBe(wallEnd, {
+                                            x: ball.nextX,
+                                            y: ball.nextY,
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
+                                        });
+                                        const rolled = rollAroundCap(wallEnd, {
+                                            x: ball.nextX, // Corrected from closest.x
+                                            y: ball.nextY, // Corrected from closest.y
+                                            velocityX: ball.velocityX,
+                                            velocityY: ball.velocityY
+                                        });
+
+                                        Object.assign(ball, rolled);
+                                    }
+                                }
+
+                                if (ball.nextY >= wallStart.y && ball.nextY <= wallEnd.y) {
+                                    // The ball got inside the main body of the wall
+                                    if (ball.nextX < wall.x) {
+                                        // Hit vertical wall from left
+                                        ball.nextX = wall.x - wallW / 2 - ballSize / 2;
+                                    } else {
+                                        // Hit vertical wall from right
+                                        ball.nextX = wall.x + wallW / 2 + ballSize / 2;
+                                    }
+                                    ball.x = ball.nextX;
+                                    ball.velocityX = -ball.velocityX / 3;
+
+                                    if (debugMode && wi > 4)
+                                        console.error("crossing v line, HIT", ball);
+                                }
+                            }
+                        }
+                    });
+
+                    // Adjust ball metadata
+                    ball.x += ball.velocityX;
+                    ball.y += ball.velocityY;
+
+                    // Win detection
+                    let exitedMaze = false;
+
+                    const cellSize = wallW + pathW;
+                    const mazeWidth = mazeColumns * cellSize;
+                    const mazeHeight = mazeRows * cellSize;
+
+                    if (exitSide === 'top' && ball.y <= -ballSize) {
+                        exitedMaze = true;
+                    } else if (exitSide === 'bottom' && ball.y >= mazeHeight + ballSize) {
+                        exitedMaze = true;
+                    } else if (exitSide === 'left' && ball.x <= -ballSize) {
+                        exitedMaze = true;
+                    } else if (exitSide === 'right' && ball.x >= mazeWidth + ballSize) {
+                        exitedMaze = true;
+                    }
+
+                    if (exitedMaze) {
+                        // Clear any existing messages
+                        noteElement.innerHTML = ``;
+                        // Show Toast Notification
+                        showToast(`🎉 Congrats, the ball is free! 🎉`);
+                        gameInProgress = false;
+                        triggerConfetti();
+                        startJoystickGlow();
+                    }
+                });
+
+                // Move balls to their new position on the UI
+                balls.forEach(({ x, y }, index) => {
+                    ballElements[index].style.cssText = `left: ${x}px; top: ${y}px; `;
+                });
+
+                if (gameInProgress) {
+                    previousTimestamp = timestamp;
+                    window.requestAnimationFrame(main);
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        // Request Device Orientation Permissions Automatically on Toggle
+        function requestDeviceOrientation() {
+            return new Promise((resolve, reject) => {
+                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    // iOS 13+ devices require permission
+                    DeviceOrientationEvent.requestPermission()
+                        .then(response => {
+                            if (response === 'granted') {
+                                window.addEventListener('deviceorientation', handleOrientation, true);
+                                deviceOrientationEnabled = true;
+                                resolve();
+                            } else {
+                                console.warn('Device orientation permission denied.');
+                                reject('Permission denied');
+                            }
+                        })
+                        .catch(error => {
+                            console.error(error);
+                            reject(error);
+                        });
+                } else if (window.DeviceOrientationEvent) {
+                    // Non iOS 13+ devices
+                    window.addEventListener('deviceorientation', handleOrientation, true);
+                    deviceOrientationEnabled = true;
+                    resolve();
+                } else {
+                    console.warn('Device orientation not supported.');
+                    reject('Not supported');
+                }
+            });
+        }
+
+        // Highlight the exit border to green
+        function highlightExitBorder() {
+            switch(exitSide) {
+                case 'top':
+                    mazeElement.style.borderTop = '2px solid green';
+                    break;
+                case 'bottom':
+                    mazeElement.style.borderBottom = '2px solid green';
+                    break;
+                case 'left':
+                    mazeElement.style.borderLeft = '2px solid green';
+                    break;
+                case 'right':
+                    mazeElement.style.borderRight = '2px solid green';
+                    break;
+                default:
+                    // Default to no highlight
+                    break;
+            }
+        }
+
+        // Trigger Confetti Animation
+        function triggerConfetti() {
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        }
+
+        // Handle Window Resize for Confetti Canvas
+        window.addEventListener('resize', () => {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
         });
 
-        // Highlight the exit border
-        highlightExitBorder();
-    }
-}
+        // Function to stop the breathing (glow) animation on joystick head
+        function stopJoystickGlow() {
+            joystickHeadElement.style.animation = 'none';
+        }
+
+        // Function to start the breathing (glow) animation on joystick head
+        function startJoystickGlow() {
+            joystickHeadElement.style.animation = `
+                glow 0.6s infinite alternate ease-in-out
+            `;
+        }
+    </script>
+</body>
+</html>
