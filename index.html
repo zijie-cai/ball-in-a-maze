@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title>Maze Game</title>
-    <!-- 1. Add Meta Viewport for Mobile Responsiveness -->
+    <!-- Meta Viewport for Mobile Responsiveness -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- 2. Include Canvas Confetti Library -->
+    <!-- Include Canvas Confetti Library -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <style>
         body {
@@ -85,13 +85,29 @@
             transition: border 0.3s ease; /* Smooth transition for border color changes */
         }
 
+        /* SVG Path for AI Highlight */
+        #path-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Allow clicks through */
+        }
+
+        .path-line {
+            stroke: red;
+            stroke-width: 2;
+            fill: none;
+        }
+
         #controls {
             display: flex;
             flex-direction: column;
             align-items: center;
         }
 
-        /* New buttons container */
+        /* Buttons Container */
         #buttons {
             display: flex;
             gap: 10px;
@@ -259,7 +275,6 @@
             background-color: white;
             transition: 0.4s;
             border-radius: 50%;
-
         }
 
         input:checked + .slider {
@@ -424,6 +439,9 @@
         <!-- Information Button -->
         <button id="instruction-button" class="info-button" aria-label="Open Instructions">i</button>
         <div id="maze">
+            <svg id="path-svg">
+                <polyline id="path-line" class="path-line" points="" />
+            </svg>
             <!-- Maze elements will be dynamically generated -->
         </div>
         <div id="controls">
@@ -459,6 +477,14 @@
                 </label>
                 <span class="toggle-label">Enable Device Orientation</span>
             </div>
+            <!-- AI Toggle -->
+            <div class="toggle-container">
+                <label class="switch" aria-label="Enable AI">
+                    <input type="checkbox" id="ai-toggle">
+                    <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">Enable AI</span>
+            </div>
         </div>
     </div>
 
@@ -478,6 +504,8 @@
 
         // Game Elements
         const mazeElement = document.getElementById("maze");
+        const pathSvgElement = document.getElementById("path-svg");
+        const pathLineElement = document.getElementById("path-line");
         const joystickHeadElement = document.getElementById("joystick-head");
         const noteElement = document.getElementById("note"); // Note element for instructions and game won, game failed texts
         const resetButton = document.getElementById("reset-button");
@@ -490,6 +518,9 @@
 
         // Orientation Toggle Element
         const orientationToggle = document.getElementById("orientation-toggle");
+
+        // AI Toggle Element
+        const aiToggle = document.getElementById("ai-toggle");
 
         // Initialize Canvas for Confetti
         const confettiCtx = confettiCanvas.getContext('2d');
@@ -669,26 +700,25 @@
         if (!isMobile) {
             // Hide the orientation toggle if not on a mobile device
             orientationToggle.parentElement.style.display = 'none';
-            document.querySelector('.toggle-label').style.display = 'none';
+            document.querySelectorAll('.toggle-label')[0].style.display = 'none';
         } else {
             // By default, device orientation is disabled
             orientationToggle.checked = false;
         }
 
-        orientationToggle.addEventListener("change", function() {
+        orientationToggle.addEventListener("change", async function() {
             if (this.checked) {
                 // Enable device orientation
-                requestDeviceOrientation()
-                    .then(() => {
-                        showToast('Device orientation enabled.');
-                        this.setAttribute('aria-checked', 'true');
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                        showToast('Failed to enable device orientation.');
-                        this.checked = false; // Revert checkbox if failed
-                        this.setAttribute('aria-checked', 'false');
-                    });
+                try {
+                    await requestDeviceOrientation();
+                    showToast('Device orientation enabled.');
+                    this.setAttribute('aria-checked', 'true');
+                } catch (error) {
+                    console.error(error);
+                    showToast('Failed to enable device orientation.');
+                    this.checked = false; // Revert checkbox if failed
+                    this.setAttribute('aria-checked', 'false');
+                }
             } else {
                 // Disable device orientation
                 window.removeEventListener('deviceorientation', handleOrientation, true);
@@ -702,6 +732,19 @@
                 mazeElement.style.transform = `
                     rotateY(0deg) rotateX(0deg)
                 `;
+            }
+        });
+
+        // AI Toggle Handling
+        aiToggle.addEventListener("change", function() {
+            if (this.checked) {
+                // AI turned on, show path
+                showPath();
+                this.setAttribute('aria-checked', 'true');
+            } else {
+                // AI turned off, hide path
+                hidePath();
+                this.setAttribute('aria-checked', 'false');
             }
         });
 
@@ -794,7 +837,7 @@
             }
         }
 
-        function resetGame(generateNewMaze = false) {
+        async function resetGame(generateNewMaze = false) {
             previousTimestamp = undefined;
             gameInProgress = false;
             isMouseDown = false;
@@ -836,6 +879,9 @@
             // Clear existing messages
             noteElement.innerHTML = ``;
             noteElement.style.opacity = 0;
+
+            // Clear existing path highlight
+            hidePath();
 
             // Clear previous ball elements
             if (ballElements.length) {
@@ -901,6 +947,11 @@
 
                 // Highlight the exit border
                 highlightExitBorder();
+            }
+
+            // After resetting, if AI is enabled, show the path
+            if (aiToggle.checked) {
+                showPath();
             }
         }
 
@@ -1063,6 +1114,11 @@
 
             // Highlight the exit border
             highlightExitBorder();
+
+            // After generating the maze, if AI is enabled, show the path
+            if (aiToggle.checked) {
+                showPath();
+            }
         }
 
         function getUnvisitedNeighbors(cell) {
@@ -1154,7 +1210,7 @@
                 tiltRotationY = rotationY;
 
                 currentRotationX = tiltRotationX;
-                currentRotationY = tiltRotationY;
+                currentRotationY = rotationY;
 
                 mazeElement.style.transform = `
                     rotateY(${currentRotationY}deg) rotateX(${-currentRotationX}deg)
@@ -1250,15 +1306,9 @@
                                             console.warn("too close h head", distance, ball);
 
                                         // Ball hits the left cap of a horizontal wall
-                                        const closest = closestItCanBe(wallStart, {
+                                        const rolled = rollAroundCap(wallStart, {
                                             x: ball.nextX,
                                             y: ball.nextY,
-                                            velocityX: ball.velocityX,
-                                            velocityY: ball.velocityY
-                                        });
-                                        const rolled = rollAroundCap(wallStart, {
-                                            x: ball.nextX, // Corrected from closest.x
-                                            y: ball.nextY, // Corrected from closest.y
                                             velocityX: ball.velocityX,
                                             velocityY: ball.velocityY
                                         });
@@ -1281,15 +1331,9 @@
                                             console.warn("too close h tail", distance, ball);
 
                                         // Ball hits the right cap of a horizontal wall
-                                        const closest = closestItCanBe(wallEnd, {
+                                        const rolled = rollAroundCap(wallEnd, {
                                             x: ball.nextX,
                                             y: ball.nextY,
-                                            velocityX: ball.velocityX,
-                                            velocityY: ball.velocityY
-                                        });
-                                        const rolled = rollAroundCap(wallEnd, {
-                                            x: ball.nextX, // Corrected from closest.x
-                                            y: ball.nextY, // Corrected from closest.y
                                             velocityX: ball.velocityX,
                                             velocityY: ball.velocityY
                                         });
@@ -1346,15 +1390,9 @@
                                             console.warn("too close v head", distance, ball);
 
                                         // Ball hits the top cap of a vertical wall
-                                        const closest = closestItCanBe(wallStart, {
+                                        const rolled = rollAroundCap(wallStart, {
                                             x: ball.nextX,
                                             y: ball.nextY,
-                                            velocityX: ball.velocityX,
-                                            velocityY: ball.velocityY
-                                        });
-                                        const rolled = rollAroundCap(wallStart, {
-                                            x: ball.nextX, // Corrected from closest.x
-                                            y: ball.nextY, // Corrected from closest.y
                                             velocityX: ball.velocityX,
                                             velocityY: ball.velocityY
                                         });
@@ -1377,15 +1415,9 @@
                                             console.warn("too close v tail", distance, ball);
 
                                         // Ball hits the bottom cap of a vertical wall
-                                        const closest = closestItCanBe(wallEnd, {
+                                        const rolled = rollAroundCap(wallEnd, {
                                             x: ball.nextX,
                                             y: ball.nextY,
-                                            velocityX: ball.velocityX,
-                                            velocityY: ball.velocityY
-                                        });
-                                        const rolled = rollAroundCap(wallEnd, {
-                                            x: ball.nextX, // Corrected from closest.x
-                                            y: ball.nextY, // Corrected from closest.y
                                             velocityX: ball.velocityX,
                                             velocityY: ball.velocityY
                                         });
@@ -1442,6 +1474,11 @@
                         gameInProgress = false;
                         triggerConfetti();
                     }
+
+                    // Update AI Path if enabled
+                    if (aiToggle.checked) {
+                        updatePath();
+                    }
                 });
 
                 // Move balls to their new position on the UI
@@ -1459,35 +1496,32 @@
         }
 
         // Request Device Orientation Permissions Automatically on Toggle
-        function requestDeviceOrientation() {
-            return new Promise((resolve, reject) => {
-                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    // iOS 13+ devices require permission
-                    DeviceOrientationEvent.requestPermission()
-                        .then(response => {
-                            if (response === 'granted') {
-                                window.addEventListener('deviceorientation', handleOrientation, true);
-                                deviceOrientationEnabled = true;
-                                resolve();
-                            } else {
-                                console.warn('Device orientation permission denied.');
-                                reject('Permission denied');
-                            }
-                        })
-                        .catch(error => {
-                            console.error(error);
-                            reject(error);
-                        });
-                } else if (window.DeviceOrientationEvent) {
-                    // Non iOS 13+ devices
-                    window.addEventListener('deviceorientation', handleOrientation, true);
-                    deviceOrientationEnabled = true;
-                    resolve();
-                } else {
-                    console.warn('Device orientation not supported.');
-                    reject('Not supported');
+        async function requestDeviceOrientation() {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                // iOS 13+ devices require permission
+                try {
+                    const response = await DeviceOrientationEvent.requestPermission();
+                    if (response === 'granted') {
+                        window.addEventListener('deviceorientation', handleOrientation, true);
+                        deviceOrientationEnabled = true;
+                        return;
+                    } else {
+                        console.warn('Device orientation permission denied.');
+                        throw new Error('Permission denied');
+                    }
+                } catch (error) {
+                    console.error(error);
+                    throw error;
                 }
-            });
+            } else if (window.DeviceOrientationEvent) {
+                // Non iOS 13+ devices
+                window.addEventListener('deviceorientation', handleOrientation, true);
+                deviceOrientationEnabled = true;
+                return;
+            } else {
+                console.warn('Device orientation not supported.');
+                throw new Error('Not supported');
+            }
         }
 
         // Highlight the exit border to green
@@ -1525,6 +1559,120 @@
             confettiCanvas.width = window.innerWidth;
             confettiCanvas.height = window.innerHeight;
         });
+
+        // Pathfinding and Path Highlighting Functions
+
+        // Get current ball cell
+        function getCurrentBallCell() {
+            const cellSize = wallW + pathW;
+            const ball = balls[0];
+            const column = Math.floor(ball.x / cellSize);
+            const row = Math.floor(ball.y / cellSize);
+            // Ensure indices are within bounds
+            const safeRow = Math.min(Math.max(row, 0), mazeRows - 1);
+            const safeColumn = Math.min(Math.max(column, 0), mazeColumns - 1);
+            return grid[safeRow][safeColumn];
+        }
+
+        // Get exit cell object
+        function getExitCellObj() {
+            return grid[exitCell.row][exitCell.column];
+        }
+
+        // Find shortest path using BFS
+        function findShortestPath(start, end) {
+            const queue = [];
+            const visited = new Set();
+            const predecessor = {};
+
+            const key = (cell) => `${cell.x},${cell.y}`;
+
+            queue.push(start);
+            visited.add(key(start));
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+
+                if (current.x === end.x && current.y === end.y) {
+                    // Found the end, reconstruct the path
+                    const path = [];
+                    let step = current;
+                    while (step) {
+                        path.push(step);
+                        step = predecessor[key(step)];
+                    }
+                    return path.reverse();
+                }
+
+                // Get neighbors
+                const neighbors = getAvailableNeighbors(current);
+
+                neighbors.forEach(neighbor => {
+                    const neighborKey = key(neighbor);
+                    if (!visited.has(neighborKey)) {
+                        visited.add(neighborKey);
+                        predecessor[neighborKey] = current;
+                        queue.push(neighbor);
+                    }
+                });
+            }
+
+            // No path found
+            return null;
+        }
+
+        // Get available neighbors for a cell
+        function getAvailableNeighbors(cell) {
+            const neighbors = [];
+
+            if (!cell.walls.top && cell.y > 0) {
+                neighbors.push(grid[cell.y - 1][cell.x]);
+            }
+            if (!cell.walls.right && cell.x < mazeColumns - 1) {
+                neighbors.push(grid[cell.y][cell.x + 1]);
+            }
+            if (!cell.walls.bottom && cell.y < mazeRows - 1) {
+                neighbors.push(grid[cell.y + 1][cell.x]);
+            }
+            if (!cell.walls.left && cell.x > 0) {
+                neighbors.push(grid[cell.y][cell.x - 1]);
+            }
+
+            return neighbors;
+        }
+
+        // Show Path by drawing a polyline
+        function showPath() {
+            updatePath(); // Initial path draw
+        }
+
+        // Hide Path by clearing the polyline
+        function hidePath() {
+            pathLineElement.setAttribute('points', '');
+        }
+
+        // Update Path: Recompute and redraw the polyline
+        function updatePath() {
+            const start = getCurrentBallCell();
+            const end = getExitCellObj();
+
+            const path = findShortestPath(start, end);
+
+            if (!path) {
+                showToast('No path found.');
+                hidePath();
+                return;
+            }
+
+            // Generate points for the polyline
+            const points = path.map(cell => {
+                const centerX = cell.x * (wallW + pathW) + pathW / 2;
+                const centerY = cell.y * (wallW + pathW) + pathW / 2;
+                return `${centerX},${centerY}`;
+            }).join(' ');
+
+            pathLineElement.setAttribute('points', points);
+        }
     </script>
 </body>
 </html>
